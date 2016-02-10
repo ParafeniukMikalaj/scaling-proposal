@@ -1,5 +1,8 @@
 package hashing.impl;
 
+import com.google.common.collect.Lists;
+import coordination.CoordinatedNode;
+import coordination.impl.CoordinatedNodeImpl;
 import model.Node;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -10,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class HashRingImpl implements HashRing<Node, Integer> {
+public class HashRingImpl implements HashRing<Integer, Integer> {
 
     private static class HashRingEntry implements Comparable<HashRingEntry> {
         private final int nodeId;
@@ -45,19 +48,18 @@ public class HashRingImpl implements HashRing<Node, Integer> {
     private final int maxValue;
     private final int splitPointsNumber;
 
-    private final Map<Integer, Node> nodeMap;
+    private final Set<Integer> nodeIds = Sets.newHashSet();
     private SortedSet<HashRingEntry> ringEntries;
     private final Random random;
 
     public HashRingImpl(int maxValue, int splitPointsNumber) {
         this.maxValue = maxValue;
         this.splitPointsNumber = splitPointsNumber;
-        this.nodeMap = Maps.newHashMap();
         this.random = new Random();
         this.ringEntries = Sets.newTreeSet();
     }
 
-    public Node hash(Integer value) {
+    public Integer hash(Integer value) {
         if (ringEntries.isEmpty()) {
             logger.warn("Empty entries set can't hash value");
             return null;
@@ -65,43 +67,43 @@ public class HashRingImpl implements HashRing<Node, Integer> {
 
         int point = value.hashCode() % maxValue;
         SortedSet<HashRingEntry> tailEntries = ringEntries.tailSet(new HashRingEntry(Integer.MAX_VALUE, point));
-        return tailEntries.isEmpty() ? getNode(ringEntries.first()) : getNode(tailEntries.first());
+        return tailEntries.isEmpty() ? ringEntries.first().nodeId() :tailEntries.first().nodeId();
     }
 
-    public void remove(final Node node) {
+    public void remove(final Integer nodeId) {
         ringEntries = ringEntries.stream()
-                .filter(e -> e.nodeId() != node.id())
+                .filter(e -> e.nodeId() != nodeId)
                 .collect(Collectors.toCollection(TreeSet::new));
 
-        nodeMap.remove(node.id());
+        nodeIds.remove(nodeId);
     }
 
-    public void add(Node node) {
-        int nodeId = node.id();
+    public Collection<Integer> add(Integer nodeId) {
         if (nodeId < 0 && nodeId >= maxValue) {
             logger.warn("Node ignored. Node id {} is not in range of managed nodes [0, {}).", nodeId, maxValue);
-            return;
+            return null;
         }
 
-        if (nodeMap.containsKey(nodeId)) {
+
+        if (nodeIds.contains(nodeId)) {
             logger.warn("Node with id {} is already added", nodeId);
-            return;
+            return null;
         }
 
-        nodeMap.put(nodeId, node);
+        nodeIds.add(nodeId);
 
+        List<Integer> splitPoints = Lists.newArrayList();
         for (int i = 0; i < splitPointsNumber; i++) {
             int splitPoint = random.nextInt(maxValue);
+            splitPoints.add(splitPoint);
             ringEntries.add(new HashRingEntry(nodeId, splitPoint));
         }
+
+        return splitPoints;
     }
 
-    public Collection<Integer> filterNotOwnedValues(Node node, Collection<Integer> ownedValues) {
-        return ownedValues.stream().filter(v -> hash(v).id() != node.id()).collect(Collectors.toList());
-    }
-
-    private Node getNode(HashRingEntry entry) {
-        return nodeMap.get(entry.nodeId);
+    public Collection<Integer> filterNotOwnedValues(Integer nodeId, Collection<Integer> ownedValues) {
+        return ownedValues.stream().filter(v -> !(hash(v).equals(nodeId))).collect(Collectors.toList());
     }
 
     public static final Logger logger = LoggerFactory.getLogger(HashRingImpl.class);

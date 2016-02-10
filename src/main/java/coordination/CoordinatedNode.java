@@ -2,8 +2,9 @@ package coordination;
 
 import model.Node;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface CoordinatedNode extends Node {
-    List<Integer> splitPoints();
+    Collection<Integer> splitPoints();
 }

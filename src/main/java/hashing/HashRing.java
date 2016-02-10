@@ -2,12 +2,12 @@ package hashing;
 
 import java.util.Collection;
 
-public interface HashRing<N, V> {
-    N hash(V value);
+public interface HashRing<I, V> {
+    I hash(V value);
 
-    void remove(N node);
+    void remove(I node);
 
-    void add(N node);
+    Collection<Integer> add(I node);
 
-    Collection<V> filterNotOwnedValues(N node, Collection<V> ownedValues);
+    Collection<V> filterNotOwnedValues(I node, Collection<V> ownedValues);
 }
