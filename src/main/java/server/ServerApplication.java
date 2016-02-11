@@ -13,6 +13,7 @@ import model.Node;
 import model.impl.NodeImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import server.impl.ServerImpl;
 
 import java.util.Collection;
@@ -29,17 +30,23 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     private int partitionsCount;
 
-    private final int id;
+    private Integer nodeId;
 
-    public ServerApplication(int id, String host, int port) {
-        this.id = id;
+    private String host;
+
+    private Integer port;
+
+    public ServerApplication(Integer nodeId, String host, Integer port) {
+        this.nodeId = nodeId;
+        this.host = host;
+        this.port = port;
         server  = new ServerImpl(port, this);
-        Collection<Integer> splitPoints = hashRing.generateSplitPoints(id);
-        Node node = new NodeImpl(id, host, port);
+        Collection<Integer> splitPoints = hashRing.generateSplitPoints(nodeId);
+        Node node = new NodeImpl(nodeId, host, port);
         CoordinatedNode coordinatedNode = new CoordinatedNodeImpl(node, splitPoints);
-        coordinator.subscribe(this);
-        coordinator.join(coordinatedNode);
-        consumer.setListener(this);
+//        coordinator.join(coordinatedNode);
+//        coordinator.subscribe(this);
+        //consumer.setListener(this);
     }
 
     @Override
@@ -60,13 +67,13 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
     }
 
     private void updateConsumerPartitions(Multimap<Integer, Integer> coordinationState) {
-        Collection<Integer> ownedPartitions = hashRing.getPartitions(id, coordinationState);
+        Collection<Integer> ownedPartitions = hashRing.getPartitions(nodeId, coordinationState);
         consumer.setPartitions(ownedPartitions);
     }
 
     private void disconnectNotOwnedClients(Multimap<Integer, Integer> coordinationState) {
         server.connectedClients().stream()
-                .filter(client -> hashRing.hash(client, coordinationState) != id)
+                .filter(client -> hashRing.hash(client, coordinationState) != nodeId)
                 .forEach(client -> server.disconnectClient(client));
     }
 
