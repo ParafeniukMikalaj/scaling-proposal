@@ -4,16 +4,13 @@ import com.google.common.collect.Multimap;
 import hashing.HashRing;
 import hashing.impl.HashRingImpl;
 import model.Node;
-import model.impl.NodeImpl;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -25,7 +22,7 @@ public class HashRingImplTest {
 
     @Test
     public void randomPartitionsWithDeletions() {
-        HashRing<Node, Integer> ring = new HashRingImpl(100, 3);
+        HashRing<Integer, Integer> ring = new HashRingImpl(100, 3);
 
         List<Integer> accountIds = getAccounts(100);
         List<Node> nodes = addNodesToRing(ring, 3);
@@ -33,7 +30,7 @@ public class HashRingImplTest {
         List<Integer> accountPartitions = getUniquePartitions(ring, accountIds);
         Assert.assertThat(accountPartitions.size(), lessThanOrEqualTo(3));
 
-        ring.remove(nodes.get(1));
+        ring.remove(1);
 
         accountPartitions = getUniquePartitions(ring, accountIds);
         Assert.assertThat(accountPartitions.size(), lessThanOrEqualTo(2));
@@ -41,7 +38,7 @@ public class HashRingImplTest {
 
     @Test
     public void testMigrationRatio() {
-        HashRing<Node, Integer> ring = new HashRingImpl(100, 3);
+        HashRing<Integer, Integer> ring = new HashRingImpl(100, 3);
         int accountsCount = 1000;
         int nodesCount = 10;
         List<Integer> accountIds = getAccounts(accountsCount);
@@ -49,15 +46,15 @@ public class HashRingImplTest {
 
         Multimap<Integer, Integer> nodeAccounts = ArrayListMultimap.create();
         for (Integer accountId : accountIds) {
-            nodeAccounts.put(ring.hash(accountId).id(), accountId);
+            nodeAccounts.put(ring.hash(accountId), accountId);
         }
 
-        ring.add(new NodeImpl(100, "host101", PORT));
+        ring.add(100);
         int totalMigratedAccounts = 0;
 
         for (Node node : nodes) {
             Collection<Integer> ownedAccounts = nodeAccounts.get(node.id());
-            Collection<Integer> notOwnedAccounts = ring.filterNotOwnedValues(node, ownedAccounts);
+            Collection<Integer> notOwnedAccounts = ring.filterNotOwnedValues(node.id(), ownedAccounts);
             int migratedAccountsSize = notOwnedAccounts.size();
             totalMigratedAccounts += migratedAccountsSize;
             if (migratedAccountsSize > 0) {
@@ -70,12 +67,10 @@ public class HashRingImplTest {
                 actualMigrationRatio, expectedMigratinRadio);
     }
 
-    private List<Node> addNodesToRing(HashRing<Node, Integer> ring, int count) {
+    private List<Node> addNodesToRing(HashRing<Integer, Integer> ring, int count) {
         List<Node> nodes = Lists.newArrayList();
         for (int i = 0; i < count; i++) {
-            NodeImpl node = new NodeImpl(i, "host" + (i + 1), PORT);
-            nodes.add(node);
-            ring.add(node);
+            ring.add(i);
         }
         return nodes;
     }
@@ -84,8 +79,8 @@ public class HashRingImplTest {
         return IntStream.range(0, count).boxed().collect(Collectors.toList());
     }
 
-    private List<Integer> getUniquePartitions(HashRing<Node, Integer> ring, List<Integer> accountIds) {
-        return accountIds.stream().map(a -> ring.hash(a).id()).distinct().sorted().collect(Collectors.toList());
+    private List<Integer> getUniquePartitions(HashRing<Integer, Integer> ring, List<Integer> accountIds) {
+        return accountIds.stream().map(a -> ring.hash(a)).distinct().sorted().collect(Collectors.toList());
     }
 
     private static final Logger logger = LoggerFactory.getLogger(HashRingImplTest.class);
