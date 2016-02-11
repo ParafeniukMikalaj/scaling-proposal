@@ -1,17 +1,17 @@
 package hashing.impl;
 
-import com.google.common.collect.Lists;
-import coordination.CoordinatedNode;
-import coordination.impl.CoordinatedNodeImpl;
-import model.Node;
-import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import hashing.HashRing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Random;
+import java.util.SortedSet;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class HashRingImpl implements HashRing<Integer, Integer> {
 
@@ -45,71 +45,57 @@ public class HashRingImpl implements HashRing<Integer, Integer> {
         }
     }
 
-    private final int maxValue;
+    private final int partitionsCount;
     private final int splitPointsNumber;
 
-    private final Set<Integer> nodeIds = Sets.newHashSet();
-    private SortedSet<HashRingEntry> ringEntries;
     private final Random random;
 
-    public HashRingImpl(int maxValue, int splitPointsNumber) {
-        this.maxValue = maxValue;
+    public HashRingImpl(int partitionsCount, int splitPointsNumber) {
+        this.partitionsCount = partitionsCount;
         this.splitPointsNumber = splitPointsNumber;
         this.random = new Random();
-        this.ringEntries = Sets.newTreeSet();
-    }
-
-    public Integer hash(Integer value) {
-        if (ringEntries.isEmpty()) {
-            logger.warn("Empty entries set can't hash value");
-            return null;
-        }
-
-        int point = value.hashCode() % maxValue;
-        SortedSet<HashRingEntry> tailEntries = ringEntries.tailSet(new HashRingEntry(Integer.MAX_VALUE, point));
-        return tailEntries.isEmpty() ? ringEntries.first().nodeId() :tailEntries.first().nodeId();
-    }
-
-    public void remove(final Integer nodeId) {
-        ringEntries = ringEntries.stream()
-                .filter(e -> e.nodeId() != nodeId)
-                .collect(Collectors.toCollection(TreeSet::new));
-
-        nodeIds.remove(nodeId);
-    }
-
-    public Collection<Integer> add(Integer nodeId) {
-        if (nodeId < 0 && nodeId >= maxValue) {
-            logger.warn("Node ignored. Node id {} is not in range of managed nodes [0, {}).", nodeId, maxValue);
-            return null;
-        }
-
-
-        if (nodeIds.contains(nodeId)) {
-            logger.warn("Node with id {} is already added", nodeId);
-            return null;
-        }
-
-        nodeIds.add(nodeId);
-
-        List<Integer> splitPoints = Lists.newArrayList();
-        for (int i = 0; i < splitPointsNumber; i++) {
-            int splitPoint = random.nextInt(maxValue);
-            splitPoints.add(splitPoint);
-            ringEntries.add(new HashRingEntry(nodeId, splitPoint));
-        }
-
-        return splitPoints;
     }
 
     @Override
-    public Collection<Integer> getPartitions(int partitionsCount, Integer node,
-                                             Collection<CoordinatedNode> coordinatedNodes) {
-        return null;
+    public Collection<Integer> generateSplitPoints(Integer nodeId) {
+        return IntStream
+                .range(0, splitPointsNumber)
+                .map(x -> random.nextInt(partitionsCount))
+                .boxed()
+                .collect(Collectors.toList());
     }
 
-    public Collection<Integer> filterNotOwnedValues(Integer nodeId, Collection<Integer> ownedValues) {
-        return ownedValues.stream().filter(v -> !(hash(v).equals(nodeId))).collect(Collectors.toList());
+    @Override
+    public Integer hash(Integer value, Multimap<Integer, Integer> coordinatorState) {
+        int partition = value.hashCode() % partitionsCount;
+        SortedSet<HashRingEntry> ringEntries = buildRingEntries(coordinatorState);
+        return getPartitionOwner(ringEntries, partition);
+    }
+
+    @Override
+    public Collection<Integer> getPartitions(Integer nodeId, Multimap<Integer, Integer> coordinatorState) {
+        SortedSet<HashRingEntry> ringEntries = buildRingEntries(coordinatorState);
+        return IntStream.range(0, partitionsCount)
+                .filter(p -> getPartitionOwner(ringEntries, p).equals(nodeId))
+                .boxed()
+                .collect(Collectors.toList());
+    }
+
+    private Integer getPartitionOwner(SortedSet<HashRingEntry> ringEntries, int partition) {
+        Integer ownerId;
+        SortedSet<HashRingEntry> tailEntries = ringEntries.tailSet(new HashRingEntry(Integer.MAX_VALUE, partition));
+        ownerId = tailEntries.isEmpty() ? ringEntries.first().nodeId() : tailEntries.first().nodeId();
+        return ownerId;
+    }
+
+    private SortedSet<HashRingEntry> buildRingEntries(Multimap<Integer, Integer> states) {
+        SortedSet<HashRingEntry> ringEntries = Sets.newTreeSet();
+        for (Map.Entry<Integer, Integer> entry : states.entries()) {
+            Integer currentNodeId = entry.getKey();
+            Integer splitPoint = entry.getValue();
+            ringEntries.add(new HashRingEntry(currentNodeId, splitPoint));
+        }
+        return ringEntries;
     }
 
     public static final Logger logger = LoggerFactory.getLogger(HashRingImpl.class);

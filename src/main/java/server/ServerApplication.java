@@ -1,5 +1,7 @@
 package server;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import coordination.CoordinatedNode;
 import coordination.Coordinator;
 import coordination.CoordinatorListener;
@@ -9,14 +11,11 @@ import kafka.TestKafkaConsumer;
 import kafka.TestKafkaConsumerListener;
 import model.Node;
 import model.impl.NodeImpl;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.impl.ServerImpl;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.stream.IntStream;
 
 public class ServerApplication implements CoordinatorListener, TestKafkaConsumerListener, ServerContainer {
 
@@ -35,7 +34,7 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
     public ServerApplication(int id, String host, int port) {
         this.id = id;
         server  = new ServerImpl(port, this);
-        Collection<Integer> splitPoints = hashRing.add(id);
+        Collection<Integer> splitPoints = hashRing.generateSplitPoints(id);
         Node node = new NodeImpl(id, host, port);
         CoordinatedNode coordinatedNode = new CoordinatedNodeImpl(node, splitPoints);
         coordinator.subscribe(this);
@@ -45,8 +44,30 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     @Override
     public void onStateUpdate(Collection<CoordinatedNode> nodes) {
-        Collection<Integer> ownedPartitions = hashRing.getPartitions(partitionsCount, id, nodes);
+        Multimap<Integer, Integer> coordinationState = buildCoordinationState(nodes);
+        updateConsumerPartitions(coordinationState);
+        disconnectNotOwnedClients(coordinationState);
+    }
+
+    private Multimap<Integer, Integer> buildCoordinationState(Collection<CoordinatedNode> nodes) {
+        Multimap<Integer, Integer> coordinationState = ArrayListMultimap.create();
+        for (CoordinatedNode node : nodes) {
+            for (Integer splitPoints : node.splitPoints()) {
+                coordinationState.put(node.id(), splitPoints);
+            }
+        }
+        return coordinationState;
+    }
+
+    private void updateConsumerPartitions(Multimap<Integer, Integer> coordinationState) {
+        Collection<Integer> ownedPartitions = hashRing.getPartitions(id, coordinationState);
         consumer.setPartitions(ownedPartitions);
+    }
+
+    private void disconnectNotOwnedClients(Multimap<Integer, Integer> coordinationState) {
+        server.connectedClients().stream()
+                .filter(client -> hashRing.hash(client, coordinationState) != id)
+                .forEach(client -> server.disconnectClient(client));
     }
 
     @Override

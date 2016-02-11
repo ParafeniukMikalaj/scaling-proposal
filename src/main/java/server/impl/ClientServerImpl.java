@@ -1,9 +1,11 @@
 package server.impl;
 
-import coordination.CoordinatedNode;
 import model.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.*;
 
+import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
 public class ClientServerImpl implements ClientServer, ReaderListener {
@@ -46,7 +48,18 @@ public class ClientServerImpl implements ClientServer, ReaderListener {
     }
 
     @Override
+    public void disconnect() {
+        try {
+            channel.close();
+        } catch (IOException e) {
+            logger.error("Error while closing connection", e);
+        }
+    }
+
+    @Override
     public void onResolveServer(int clientId) {
         listener.onResolveServer(this, clientId);
     }
+
+    private static final Logger logger = LoggerFactory.getLogger(ClientServerImpl.class);
 }

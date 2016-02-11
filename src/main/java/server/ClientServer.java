@@ -1,6 +1,5 @@
 package server;
 
-import coordination.CoordinatedNode;
 import model.Node;
 
 public interface ClientServer {
@@ -9,4 +8,5 @@ public interface ClientServer {
     void sendMessage(String message);
     void onReadReady();
     void onWriteReady();
+    void disconnect();
 }

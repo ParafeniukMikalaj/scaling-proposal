@@ -1,17 +1,12 @@
 package hashing;
 
-import coordination.CoordinatedNode;
-
+import com.google.common.collect.Multimap;
 import java.util.Collection;
 
 public interface HashRing<I, V> {
-    I hash(V value);
+    I hash(V value, Multimap<I, Integer> coordinatorState);
 
-    void remove(I node);
+    Collection<Integer> generateSplitPoints(I node);
 
-    Collection<Integer> add(I node);
-
-    Collection<V> getPartitions(int partitionsCount, I node, Collection<CoordinatedNode> coordinatedNodes);
-
-    Collection<V> filterNotOwnedValues(I node, Collection<V> ownedValues);
+    Collection<V> getPartitions(I nodeId, Multimap<I, Integer> coordinatorState);
 }

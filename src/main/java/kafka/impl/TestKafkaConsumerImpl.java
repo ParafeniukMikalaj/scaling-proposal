@@ -2,7 +2,6 @@ package kafka.impl;
 
 import com.google.common.collect.Sets;
 import coordination.CoordinatedNode;
-import coordination.CoordinatorListener;
 import coordination.impl.CoordinatedNodeImpl;
 import hashing.HashRing;
 import kafka.TestKafkaConsumer;
@@ -33,7 +32,7 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer {
     private final int consumerId;
 
     public TestKafkaConsumerImpl(String bootstrapServers, String topic, int consumerId, String host, int port) {
-        Collection<Integer> splitPoints = hashRing.add(consumerId);
+        Collection<Integer> splitPoints = hashRing.generateSplitPoints(consumerId);
         CoordinatedNode coordinatedNode = new CoordinatedNodeImpl(new NodeImpl(consumerId, host, port), splitPoints);
         this.topic = topic;
         this.bootstrapServers = bootstrapServers;

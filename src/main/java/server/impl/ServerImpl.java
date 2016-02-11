@@ -15,10 +15,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -47,6 +44,11 @@ public class ServerImpl implements Server, ClientServerListener {
     }
 
     @Override
+    public Collection<Integer> connectedClients() {
+        return clientServerMap.keySet();
+    }
+
+    @Override
     public boolean containsClient(int clientId) {
         return clientServerMap.containsKey(clientId);
     }
@@ -55,6 +57,14 @@ public class ServerImpl implements Server, ClientServerListener {
     public void sendMessage(int clientId, String message) {
         if (clientServerMap.containsKey(clientId)) {
             clientServerMap.get(clientId).sendMessage(message);
+        }
+    }
+
+    @Override
+    public void disconnectClient(int clientId) {
+        if (clientServerMap.containsKey(clientId)) {
+            clientServerMap.get(clientId).disconnect();
+            clientServerMap.remove(clientId);
         }
     }
 
