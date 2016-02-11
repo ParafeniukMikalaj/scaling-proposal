@@ -1,7 +1,6 @@
 package server;
 
-import java.util.List;
-
 public interface Server {
-    List<Integer> getConnectedClients();
+    boolean containsClient(int clientId);
+    void sendMessage(int clientId, String message);
 }

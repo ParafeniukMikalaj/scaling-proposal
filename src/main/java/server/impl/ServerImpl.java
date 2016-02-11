@@ -1,5 +1,6 @@
 package server.impl;
 
+import model.Node;
 import model.impl.NodeImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,6 +28,7 @@ public class ServerImpl implements Server, ClientServerListener {
     private Selector clientSelector;
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
     private ServerContainer container;
+    private Map<Integer, ClientServer> clientServerMap;
 
     public ServerImpl(int port, ServerContainer container) {
         try {
@@ -44,8 +47,15 @@ public class ServerImpl implements Server, ClientServerListener {
     }
 
     @Override
-    public List<Integer> getConnectedClients() {
-        return null;
+    public boolean containsClient(int clientId) {
+        return clientServerMap.containsKey(clientId);
+    }
+
+    @Override
+    public void sendMessage(int clientId, String message) {
+        if (clientServerMap.containsKey(clientId)) {
+            clientServerMap.get(clientId).sendMessage(message);
+        }
     }
 
     private void processConnections() {
@@ -94,9 +104,16 @@ public class ServerImpl implements Server, ClientServerListener {
 
     @Override
     public void onResolveServer(ClientServerImpl clientServer, int clientId) {
-        // TODO extract coordination info
+        Node node = container.getNode(clientId);
+        if (node == null) {
+            clientServer.sendUnknownResolutionInfo(clientId);
+        } else {
+            clientServer.sendResolutionInfo(clientId, node);
+        }
         clientServer.sendResolutionInfo(clientId, new NodeImpl(0, "localhost", 0));
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ServerImpl.class);
+
+
 }

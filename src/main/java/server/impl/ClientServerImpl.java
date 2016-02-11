@@ -26,6 +26,11 @@ public class ClientServerImpl implements ClientServer, ReaderListener {
     }
 
     @Override
+    public void sendUnknownResolutionInfo(int clientId) {
+        writer.sendUnknownResolutionInfo();
+    }
+
+    @Override
     public void sendMessage(String message) {
         writer.sendMessage(message);
     }

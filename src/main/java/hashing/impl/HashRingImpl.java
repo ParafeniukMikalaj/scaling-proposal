@@ -102,6 +102,12 @@ public class HashRingImpl implements HashRing<Integer, Integer> {
         return splitPoints;
     }
 
+    @Override
+    public Collection<Integer> getPartitions(int partitionsCount, Integer node,
+                                             Collection<CoordinatedNode> coordinatedNodes) {
+        return null;
+    }
+
     public Collection<Integer> filterNotOwnedValues(Integer nodeId, Collection<Integer> ownedValues) {
         return ownedValues.stream().filter(v -> !(hash(v).equals(nodeId))).collect(Collectors.toList());
     }
