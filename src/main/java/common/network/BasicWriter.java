@@ -21,6 +21,7 @@ public class BasicWriter implements Writer {
     public void performWrite() {
         if (buffer != null) {
             try {
+                // TODO wrap to while loop?
                 channel.write(buffer);
             } catch (IOException e) {
                 logger.error("Unexpected error while writing buffer to channel. It should be already connected", e);
@@ -30,6 +31,7 @@ public class BasicWriter implements Writer {
 
     @Override
     public void close() {
+        logger.info("Request to close channel");
         try {
             channel.close();
         } catch (IOException e) {
