@@ -3,6 +3,7 @@ package client;
 import client.impl.ClientImpl;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import common.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class ClientApplication implements ClientContainer {
+public class ClientApplication implements ClientContainer, Service {
 
     private final int clientsCount;
     private List<InetSocketAddress> addresses;
@@ -37,12 +38,14 @@ public class ClientApplication implements ClientContainer {
         this.decommissionDelay = decommissionDelay;
     }
 
+    @Override
     public void start() {
         executor.scheduleAtFixedRate(this::spawnClient, 0, spawnDelay, TimeUnit.MILLISECONDS);
         executor.scheduleAtFixedRate(this::decommissionClient, 0, decommissionDelay, TimeUnit.MILLISECONDS);
         executor.execute(this::processIo );
     }
 
+    @Override
     public void stop() {
         executor.shutdown();
     }

@@ -2,6 +2,7 @@ package server;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import common.Service;
 import coordination.CoordinatedNode;
 import coordination.Coordinator;
 import coordination.CoordinatorListener;
@@ -18,7 +19,7 @@ import server.impl.ServerImpl;
 
 import java.util.Collection;
 
-public class ServerApplication implements CoordinatorListener, TestKafkaConsumerListener, ServerContainer {
+public class ServerApplication implements CoordinatorListener, TestKafkaConsumerListener, ServerContainer, Service {
 
     private Server server;
 
@@ -43,6 +44,7 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
     public ServerApplication() {
     }
 
+    @Override
     public void start() {
         server  = new ServerImpl(port, this);
         Collection<Integer> splitPoints = hashRing.generateSplitPoints(nodeId);
@@ -53,6 +55,7 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
         consumer.setListener(this);
     }
 
+    @Override
     public void stop() {
         logger.warn("Stopping application");
     }
