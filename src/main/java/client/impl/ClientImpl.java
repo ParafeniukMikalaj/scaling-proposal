@@ -18,6 +18,7 @@ public class ClientImpl implements Client {
     private final int port;
 
     public ClientImpl(SocketChannel channel, int clientId, String host, int port, ClientContainer container) {
+        logger.info("Starting client to listen to {}:{}", host, port);
         this.clientId = clientId;
         this.reader = new ClientReaderImpl(channel, this);
         this.writer = new ClientWriterImpl(channel);
@@ -28,6 +29,7 @@ public class ClientImpl implements Client {
 
     @Override
     public void resolveServer() {
+        logger.info("Client {} on {}:{} requests resolution", clientId, host, port);
         writer.resolveServer(clientId);
     }
 
@@ -40,10 +42,12 @@ public class ClientImpl implements Client {
     public void onResolveServer(boolean success, String host, int port) {
         logger.info("Client received resolution. Success: {}, host: {}, port: {}", success, host, port);
         if (!success) {
+            logger.info("Resolution request retry");
             resolveServer();
         }
         if (host.equals(this.host) || port != this.port) {
-            logger.info("Client should be redirected to {}:{} while connected to {}:{}", host, port, this.host, this.port);
+            logger.info("Client should be redirected to {}:{} while connected to {}:{}. Request reconnect.",
+                    host, port, this.host, this.port);
             reader.close();
             writer.close();
             container.requestReconnect(clientId, host, port);
@@ -53,6 +57,7 @@ public class ClientImpl implements Client {
     @Override
     public void onConnect() {
         logger.info("Client connected to {}:{}", host, port);
+        resolveServer();
     }
 
     @Override
@@ -65,6 +70,13 @@ public class ClientImpl implements Client {
     public void onWriteReady() {
         logger.info("Client is ready to write");
         writer.performWrite();
+    }
+
+    @Override
+    public void close() {
+        logger.info("Request to stop client");
+        writer.close();
+        reader.close();
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ClientImpl.class);

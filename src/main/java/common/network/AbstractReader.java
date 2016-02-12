@@ -19,6 +19,7 @@ public abstract class AbstractReader implements Reader {
     @Override
     public void performRead() {
         try {
+            // TODO maybe while loop should be used
             channel.write(buffer);
         } catch (IOException e) {
             logger.error("Unexpected error while writing buffer to channel. It should be already connected", e);
@@ -40,6 +41,7 @@ public abstract class AbstractReader implements Reader {
 
     @Override
     public void close() {
+        logger.info("Request to close channel");
         try {
             channel.close();
         } catch (IOException e) {

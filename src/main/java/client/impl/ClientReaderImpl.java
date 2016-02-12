@@ -31,6 +31,7 @@ public class ClientReaderImpl extends AbstractReader {
     }
 
     private void handleResolveMessage(String resolveMessage) {
+        logger.info("Received resolve message {}", resolveMessage);
         if (resolveMessage.equals("unknown")) {
             listener.onResolveServer(false, null, 0);
         } else {
@@ -42,6 +43,7 @@ public class ClientReaderImpl extends AbstractReader {
     }
 
     private void handleDataMesasge(String dataMessage) {
+        logger.info("Received data message {}", dataMessage);
         listener.onMessage(dataMessage);
     }
 

@@ -40,6 +40,7 @@ public class ClientApplication implements ClientContainer, Service {
 
     @Override
     public void start() {
+        logger.info("Starting client application");
         executor.scheduleAtFixedRate(this::spawnClient, 0, spawnDelay, TimeUnit.MILLISECONDS);
         executor.scheduleAtFixedRate(this::decommissionClient, 0, decommissionDelay, TimeUnit.MILLISECONDS);
         executor.execute(this::processIo );
@@ -47,18 +48,22 @@ public class ClientApplication implements ClientContainer, Service {
 
     @Override
     public void stop() {
+        logger.info("Stopping client application");
         executor.shutdown();
     }
 
     private void spawnClient() {
+        logger.info("Automatic request to spawn client");
         InetSocketAddress address = addresses.get(random.nextInt(addresses.size()));
         int clientId = random.nextInt(clientsCount);
         spawnClient(clientId, address.getHostName(), address.getPort());
     }
 
     private void spawnClient(int clientId, String host, int port) {
+        logger.info("Request to spawn client {} with connection to {}:{}", clientId, host, port);
         try {
             if (clientKeys.containsKey(clientId)) {
+                logger.info("Client {} is already connected", clientId);
                 return;
             }
             SocketChannel socketChannel = SocketChannel.open();
@@ -68,28 +73,29 @@ public class ClientApplication implements ClientContainer, Service {
             socketChannel.connect(new InetSocketAddress(host, port));
             clientKeys.put(clientId, selectionKey);
         } catch (IOException e) {
-            logger.error("IO exception", e);
+            logger.error("IO while spawning client", e);
         }
     }
 
     private void decommissionClient() {
+        logger.info("Automatic request to decommission client");
         decommissionClient(random.nextInt(clientsCount));
     }
 
     private void decommissionClient(int clientId) {
+        logger.info("Request to decommission client {}", clientId);
         if (!clientKeys.containsKey(clientId)) {
+            logger.info("Client {} is not active", clientId);
             return;
         }
         SelectionKey selectionKey = clientKeys.remove(clientId);
-        try {
-            selectionKey.channel().close();
-        } catch (IOException e) {
-            logger.error("IO exception while decommissioning client", e);
-        }
+        Client client = (Client) selectionKey.attachment();
+        client.close();
     }
 
     @Override
     public void requestReconnect(int clientId, String host, int port) {
+        logger.info("Request from client {} on {}:{} to reconnect", clientId, host, port);
         decommissionClient(clientId);
         spawnClient(clientId, host, port);
     }

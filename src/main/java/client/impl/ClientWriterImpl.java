@@ -17,16 +17,19 @@ public class ClientWriterImpl implements ClientWriter {
 
     @Override
     public void performWrite() {
+        logger.info("Request to perform write");
         writer.performWrite();
     }
 
     @Override
     public void close() {
+        logger.info("Request to close writer");
         writer.close();
     }
 
     @Override
     public void resolveServer(int clientId) {
+        logger.info("Request to send resolve message");
         writer.writeMessage("resolve", String.valueOf(clientId));
     }
 
