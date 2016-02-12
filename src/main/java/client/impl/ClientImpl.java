@@ -2,28 +2,25 @@ package client.impl;
 
 import client.Client;
 import client.ClientContainer;
-import client.Reader;
-import client.Writer;
+import common.network.Reader;
+import client.ClientWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
 public class ClientImpl implements Client {
     private final int clientId;
     private final Reader reader;
-    private final Writer writer;
+    private final ClientWriter writer;
     private final ClientContainer container;
-    private SocketChannel channel;
     private final String host;
     private final int port;
 
     public ClientImpl(SocketChannel channel, int clientId, String host, int port, ClientContainer container) {
         this.clientId = clientId;
-        this.reader = new ReaderImpl(this);
-        this.writer = new WriterImpl(channel);
-        this.channel = channel;
+        this.reader = new ClientReaderImpl(channel, this);
+        this.writer = new ClientWriterImpl(channel);
         this.host = host;
         this.port = port;
         this.container = container;
@@ -41,32 +38,33 @@ public class ClientImpl implements Client {
 
     @Override
     public void onResolveServer(boolean success, String host, int port) {
+        logger.info("Client received resolution. Success: {}, host: {}, port: {}", success, host, port);
         if (!success) {
             resolveServer();
         }
         if (host.equals(this.host) || port != this.port) {
-            try {
-                channel.close();
-            } catch (IOException e) {
-                logger.error("exception while closing socket connection");
-            }
+            logger.info("Client should be redirected to {}:{} while connected to {}:{}", host, port, this.host, this.port);
+            reader.close();
+            writer.close();
             container.requestReconnect(clientId, host, port);
         }
     }
 
     @Override
     public void onConnect() {
-
+        logger.info("Client connected to {}:{}", host, port);
     }
 
     @Override
     public void onReadReady() {
-        reader.performRead(channel);
+        logger.info("Client is ready to read");
+        reader.performRead();
     }
 
     @Override
     public void onWriteReady() {
-        writer.performWrite(channel);
+        logger.info("Client is ready to write");
+        writer.performWrite();
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ClientImpl.class);

@@ -1,5 +1,6 @@
 package server.impl;
 
+import common.network.Reader;
 import model.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,17 +9,17 @@ import server.*;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-public class ClientServerImpl implements ClientServer, ReaderListener {
+public class ClientServerImpl implements ClientServer, ServerReaderListener {
 
     private final SocketChannel channel;
     private final Reader reader;
-    private final Writer writer;
+    private final ServerWriter writer;
     private final ClientServerListener listener;
 
     public ClientServerImpl(SocketChannel channel, ClientServerListener listener) {
         this.channel = channel;
-        writer = new WriterImpl(channel);
-        reader = new ReaderImpl(channel, this);
+        writer = new ServerWriterImpl(channel);
+        reader = new ServerReaderImpl(channel, this);
         this.listener = listener;
     }
 

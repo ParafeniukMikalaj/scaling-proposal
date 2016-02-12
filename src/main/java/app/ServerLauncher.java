@@ -1,7 +1,8 @@
-package server;
+package app;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import server.ServerApplication;
 
 import java.util.concurrent.CountDownLatch;
 

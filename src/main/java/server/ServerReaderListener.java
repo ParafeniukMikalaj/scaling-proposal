@@ -1,5 +1,5 @@
 package server;
 
-public interface ReaderListener {
+public interface ServerReaderListener {
     void onResolveServer(int clientId);
 }

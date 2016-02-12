@@ -1,17 +1,18 @@
-package producer;
+package app;
 
+import client.ClientApplication;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.concurrent.CountDownLatch;
 
-public class ProducerLauncher {
+public class ClientLauncher {
     public static void main(String[] args) throws InterruptedException {
-        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext("spring.config.producer");
-        PeriodicTestKafkaProducer producer = context.getBean(PeriodicTestKafkaProducer.class);
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext("spring.config.client");
+        ClientApplication clients = context.getBean(ClientApplication.class);
         CountDownLatch latch = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread(latch::countDown));
-        producer.start();
+        clients.start();
         latch.await();
-        producer.stop();
+        clients.stop();
     }
 }

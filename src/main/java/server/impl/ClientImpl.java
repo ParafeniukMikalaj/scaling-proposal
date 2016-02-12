@@ -2,10 +2,10 @@ package server.impl;
 
 import client.Client;
 import client.ClientContainer;
-import client.Reader;
-import client.Writer;
-import client.impl.ReaderImpl;
-import client.impl.WriterImpl;
+import common.network.Reader;
+import client.ClientWriter;
+import client.impl.ClientReaderImpl;
+import client.impl.ClientWriterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,17 +15,15 @@ import java.nio.channels.SocketChannel;
 public class ClientImpl implements Client {
     private final int clientId;
     private final Reader reader;
-    private final Writer writer;
+    private final ClientWriter writer;
     private final ClientContainer container;
-    private SocketChannel channel;
     private final String host;
     private final int port;
 
     public ClientImpl(SocketChannel channel, int clientId, String host, int port, ClientContainer container) {
         this.clientId = clientId;
-        this.reader = new ReaderImpl(this);
-        this.writer = new WriterImpl(channel);
-        this.channel = channel;
+        this.reader = new ClientReaderImpl(channel, this);
+        this.writer = new ClientWriterImpl(channel);
         this.host = host;
         this.port = port;
         this.container = container;
@@ -47,11 +45,8 @@ public class ClientImpl implements Client {
             resolveServer();
         }
         if (host.equals(this.host) || port != this.port) {
-            try {
-                channel.close();
-            } catch (IOException e) {
-                logger.error("exception while closing socket connection");
-            }
+            reader.close();
+            writer.close();
             container.requestReconnect(clientId, host, port);
         }
     }
@@ -63,12 +58,12 @@ public class ClientImpl implements Client {
 
     @Override
     public void onReadReady() {
-        reader.performRead(channel);
+        reader.performRead();
     }
 
     @Override
     public void onWriteReady() {
-        writer.performWrite(channel);
+        writer.performWrite();
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ClientImpl.class);

@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 public class ClientApplication implements ClientContainer {
 
     private final int clientsCount;
-    private List<Address> addresses;
+    private List<InetSocketAddress> addresses;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(3);
 
@@ -30,7 +30,7 @@ public class ClientApplication implements ClientContainer {
     private final long spawnDelay;
     private final long decommissionDelay;
 
-    public ClientApplication(int clientsCount, int spawnDelay, int decommissionDelay, Collection<Address> addresses) {
+    public ClientApplication(int clientsCount, int spawnDelay, int decommissionDelay, Collection<InetSocketAddress> addresses) {
         this.clientsCount = clientsCount;
         this.addresses = Lists.newArrayList(addresses);
         this.spawnDelay = spawnDelay;
@@ -48,9 +48,9 @@ public class ClientApplication implements ClientContainer {
     }
 
     private void spawnClient() {
-        Address address = addresses.get(random.nextInt(addresses.size()));
+        InetSocketAddress address = addresses.get(random.nextInt(addresses.size()));
         int clientId = random.nextInt(clientsCount);
-        spawnClient(clientId, address.host(), address.port());
+        spawnClient(clientId, address.getHostName(), address.getPort());
     }
 
     private void spawnClient(int clientId, String host, int port) {
