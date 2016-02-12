@@ -17,7 +17,7 @@ public class ServerLauncher {
         beanFactory.registerSingleton("nodeId", nodeId);
         beanFactory.registerSingleton("host", host);
         beanFactory.registerSingleton("port", port);
-        context.scan("spring.config");
+        context.scan("spring.config.server");
         context.refresh();
 
         ServerApplication application = beanFactory.getBean(ServerApplication.class);

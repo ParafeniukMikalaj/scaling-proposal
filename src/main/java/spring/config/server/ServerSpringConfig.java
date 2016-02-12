@@ -1,4 +1,4 @@
-package spring.config;
+package spring.config.server;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -7,13 +7,16 @@ import coordination.impl.ZkCoordinator;
 import hashing.HashRing;
 import hashing.impl.HashRingImpl;
 import kafka.TestKafkaConsumer;
+import kafka.TestKafkaProducer;
+import kafka.impl.TestKafkaProducerImpl;
+import producer.PeriodicTestKafkaProducer;
 import kafka.impl.TestKafkaConsumerImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import server.ServerApplication;
 
 @Configuration
-public class ScalingSpringConfig {
+public class ServerSpringConfig {
 
     @Bean
     public Config config() {
