@@ -6,10 +6,7 @@ import hashing.HashRing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Random;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -58,27 +55,33 @@ public class HashRingImpl implements HashRing<Integer, Integer> {
 
     @Override
     public Collection<Integer> generateSplitPoints(Integer nodeId) {
-        return IntStream
+        List<Integer> splitPoints = IntStream
                 .range(0, splitPointsNumber)
                 .map(x -> random.nextInt(partitionsCount))
                 .boxed()
                 .collect(Collectors.toList());
+        logger.info("Generated {} split points for node {}", splitPoints, nodeId);
+        return splitPoints;
     }
 
     @Override
     public Integer hash(Integer value, Multimap<Integer, Integer> coordinatorState) {
         int partition = value.hashCode() % partitionsCount;
         SortedSet<HashRingEntry> ringEntries = buildRingEntries(coordinatorState);
-        return getPartitionOwner(ringEntries, partition);
+        Integer partitionOwner = getPartitionOwner(ringEntries, partition);
+        logger.info("Request to hash value {}: {} belongs to partition {}, which belongs to node {}", value, value, partition, partitionOwner);
+        return partitionOwner;
     }
 
     @Override
     public Collection<Integer> getPartitions(Integer nodeId, Multimap<Integer, Integer> coordinatorState) {
         SortedSet<HashRingEntry> ringEntries = buildRingEntries(coordinatorState);
-        return IntStream.range(0, partitionsCount)
+        List<Integer> ownedPartitions = IntStream.range(0, partitionsCount)
                 .filter(p -> getPartitionOwner(ringEntries, p).equals(nodeId))
                 .boxed()
                 .collect(Collectors.toList());
+        logger.info("Node {} owned partitions {}", nodeId, ownedPartitions);
+        return ownedPartitions;
     }
 
     private Integer getPartitionOwner(SortedSet<HashRingEntry> ringEntries, int partition) {
