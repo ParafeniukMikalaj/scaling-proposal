@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
+import common.Service;
 import coordination.CoordinatedNode;
 import coordination.Coordinator;
 import coordination.CoordinatorListener;
@@ -26,7 +27,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class ZkCoordinator implements Coordinator {
+public class ZkCoordinator implements Coordinator, Service {
 
     private class ZkStateWatcher implements Watcher {
         private boolean stopped;
@@ -38,6 +39,7 @@ public class ZkCoordinator implements Coordinator {
                 return;
             }
             Event.KeeperState state = event.getState();
+            logger.info("Zookeeper state changed to {}", state);
             switch (state) {
                 case SyncConnected:
                     onZkConnected();
@@ -62,6 +64,7 @@ public class ZkCoordinator implements Coordinator {
     private class ZkPathWatcher implements Watcher {
         @Override
         public void process(WatchedEvent event) {
+            logger.info("Event {} on {} path occurred: ", event.getPath(), event.getType());
             if (event.getType() == Event.EventType.NodeChildrenChanged) {
                 onChildNodesChanged();
             }
@@ -90,18 +93,38 @@ public class ZkCoordinator implements Coordinator {
     private final Object lock = new Object();
 
     public ZkCoordinator(String zkConnectionString, String zkPath) {
+        logger.info("Creating zookeeper coordinator");
         Preconditions.checkArgument(!zkConnectionString.isEmpty(), "ZooKeeper connections can't be empty");
         this.zkConnectionString = zkConnectionString;
         this.zkPath = zkPath;
+    }
+
+    @Override
+    public void start() {
+        logger.info("Starting zookeeper coordinator");
         establishConnection();
     }
 
     @Override
+    public void stop() {
+        logger.info("Stopping zookeeper coordinator");
+        try {
+            zk.close();
+        } catch (InterruptedException e) {
+            logger.error("Error while closing zk connection", e);
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Override
     public void join(CoordinatedNode node) {
+        logger.info("Coordinated node {} is joining", node);
         synchronized (lock) {
             if (connected && !readOnly) {
+                logger.info("zk is connected and writable. Will attempt registering node");
                 registerNode(node);
             } else {
+                logger.info("zk is not writable, postpone join operation");
                 addPendingJoinOperation(node);
             }
         }
@@ -109,10 +132,13 @@ public class ZkCoordinator implements Coordinator {
 
     @Override
     public void leave(CoordinatedNode node) {
+        logger.info("Coordinated node {} is leaving", node);
         synchronized (lock) {
             if (connected && !readOnly) {
+                logger.info("zk is connected and writable. Will attempt unregister node");
                 unregisterNode(node);
             } else {
+                logger.info("zk is not writable, postpone leave operation");
                 addPendingLeaveOperation(node);
             }
         }
@@ -120,42 +146,52 @@ public class ZkCoordinator implements Coordinator {
 
     @Override
     public void subscribe(CoordinatorListener listener) {
+        logger.info("Subscription event");
         synchronized (lock) {
             if (nodesState != null && !nodesState.isEmpty()) {
+                logger.info("Have nodes state info. Subscriber will be notified immediately");
                 listener.onStateUpdate(ImmutableList.copyOf(nodesState.values()));
             }
+            logger.info("Empty nodes state info. Subscriber will be notified later");
             listeners.add(listener);
         }
     }
 
     private void onZkConnected() {
+        logger.info("Zk connection established");
         synchronized (lock) {
             this.connected = true;
             this.readOnly = false;
 
+            logger.info("Have {} pending operations", pendingOperations.size());
             while (!pendingOperations.isEmpty()) {
                 performOperation(pendingOperations.poll());
             }
 
+            logger.info("Will attempt to read state and notify listeners");
             readNodeStateAndNotifyListeners();
         }
     }
 
     private void onZkReadOnly() {
+        logger.info("Zk connection established. Read only!");
         synchronized (lock) {
             this.readOnly = true;
 
+            logger.info("Will attempt to read state and notify listeners");
             readNodeStateAndNotifyListeners();
         }
     }
 
     private void onZkDisconnected() {
+        logger.info("Zk disconnected");
         synchronized (lock) {
             this.connected = false;
         }
     }
 
     private void onChildNodesChanged() {
+        logger.info("Child nodes changed");
         synchronized (lock) {
             readNodeStateAndNotifyListeners();
         }
@@ -163,64 +199,81 @@ public class ZkCoordinator implements Coordinator {
 
     private void readNodeStateAndNotifyListeners() {
         Map<Integer, CoordinatedNode> updatedNodesState = readState();
+        logger.info("Reading {} nodes state from zookeeper", updatedNodesState != null ? "not empty" : "empty");
         if (updatedNodesState != null) {
             nodesState = updatedNodesState;
-        }
-        for (CoordinatorListener listener : listeners) {
-            listener.onStateUpdate(ImmutableList.copyOf(nodesState.values()));
+            logger.info("Notifying {} listeners about state changes", listeners.size());
+            for (CoordinatorListener listener : listeners) {
+                listener.onStateUpdate(ImmutableList.copyOf(nodesState.values()));
+            }
         }
     }
 
     private void performOperation(NodeOperation operation) {
         if (operation.type() == NodeOperation.Type.JOIN) {
+            logger.info("Performing postponed join operation");
             registerNode(operation.node());
         } else if (operation.type() == NodeOperation.Type.LEAVE) {
+            logger.info("Performing postponed leave operation");
             unregisterNode(operation.node());
         }
     }
 
     private void registerNode(CoordinatedNode node) {
+        logger.info("Registering node {} in zookeeper", node);
         Output output = new Output();
         kryo.writeObject(output, node);
         try {
             zk.create(zkPath + "/" + node, output.toBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+            logger.info("Registration success");
         } catch (KeeperException e) {
+            logger.info("Error during node registration. Adding operation to retry queue", e);
             addPendingJoinOperation(node);
         } catch (InterruptedException e) {
+            logger.info("Interrupted exception while registering node", e);
             Thread.currentThread().interrupt();
         }
     }
 
     private Map<Integer, CoordinatedNode> readState() {
+        logger.info("Reading nodes states");
         try {
             Map<Integer, CoordinatedNode> result = Maps.newHashMap();
             List<String> children = zk.getChildren(zkPath, pathWatcher);
+            logger.info("Got {} child nodes", children.size());
             for (String child : children) {
+                logger.info("Reading state of node {}", child);
                 Input input = new Input(zk.getData(child, pathWatcher, null));
                 CoordinatedNode node = kryo.readObject(input, CoordinatedNode.class);
                 result.put(node.id(), node);
             }
+            logger.info("Read nodes state success");
             return result;
         } catch (KeeperException e) {
             logger.warn("Error while reading available nodes", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            logger.warn("Interrupted exception while reading available nodes", e);
         }
         return null;
     }
 
     private void unregisterNode(CoordinatedNode node) {
+        logger.info("Unregistering node {}", node);
         try {
             zk.delete(zkPath + "/" + node.id(), 0);
+            logger.info("Node unregistered");
         } catch (KeeperException e) {
+            logger.info("Error during node unregistration. Adding operation to retry queue", e);
             addPendingLeaveOperation(node);
         } catch (InterruptedException e) {
+            logger.info("Interrupted exception while unregistering node", e);
             Thread.currentThread().interrupt();
         }
     }
 
     private void establishConnection() {
-        logger.debug("Establishing connection to ZooKeeper with connection string {}", zkConnectionString);
+        logger.info("Establishing connection to ZooKeeper with connection string {}", zkConnectionString);
         stateWatcher = new ZkStateWatcher();
         pathWatcher = new ZkPathWatcher();
         try {
@@ -232,10 +285,12 @@ public class ZkCoordinator implements Coordinator {
     }
 
     private void addPendingJoinOperation(CoordinatedNode node) {
+        logger.info("Add pending join operation");
         pendingOperations.add(new NodeOperation(node, NodeOperation.Type.JOIN));
     }
 
     private void addPendingLeaveOperation(CoordinatedNode node) {
+        logger.info("Add pending leave operation");
         pendingOperations.add(new NodeOperation(node, NodeOperation.Type.LEAVE));
     }
 

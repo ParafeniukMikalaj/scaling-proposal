@@ -66,5 +66,11 @@ public class ClientImpl implements Client {
         writer.performWrite();
     }
 
+    @Override
+    public void close() {
+        reader.close();
+        writer.close();
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(ClientImpl.class);
 }

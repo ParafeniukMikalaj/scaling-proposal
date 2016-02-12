@@ -19,4 +19,9 @@ public class CoordinatedNodeImpl extends NodeImpl implements CoordinatedNode {
     public Collection<Integer> splitPoints() {
         return splitPoints;
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + " " + splitPoints;
+    }
 }

@@ -28,4 +28,9 @@ public class NodeImpl implements Node {
     public int port() {
         return port;
     }
+
+    @Override
+    public String toString() {
+        return id + " " + host + ":" + port;
+    }
 }
