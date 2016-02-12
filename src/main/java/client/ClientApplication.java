@@ -27,13 +27,24 @@ public class ClientApplication implements ClientContainer {
     private Map<Integer, SelectionKey> clientKeys = Maps.newHashMap();
 
     private Selector selector;
+    private final long spawnDelay;
+    private final long decommissionDelay;
 
-    public ClientApplication(int clientsCount, int spawnDelay, int decommissionDelay, Collection<Address> adresses) {
+    public ClientApplication(int clientsCount, int spawnDelay, int decommissionDelay, Collection<Address> addresses) {
         this.clientsCount = clientsCount;
         this.addresses = Lists.newArrayList(addresses);
+        this.spawnDelay = spawnDelay;
+        this.decommissionDelay = decommissionDelay;
+    }
+
+    public void start() {
         executor.scheduleAtFixedRate(this::spawnClient, 0, spawnDelay, TimeUnit.MILLISECONDS);
         executor.scheduleAtFixedRate(this::decommissionClient, 0, decommissionDelay, TimeUnit.MILLISECONDS);
         executor.execute(this::processIo );
+    }
+
+    public void stop() {
+        executor.shutdown();
     }
 
     private void spawnClient() {

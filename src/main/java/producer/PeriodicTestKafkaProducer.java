@@ -8,7 +8,6 @@ import java.util.concurrent.Executors;
 
 public class PeriodicTestKafkaProducer {
 
-    private final int accountCount;
     private final int delay;
     private int counter;
 
@@ -17,8 +16,7 @@ public class PeriodicTestKafkaProducer {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    public PeriodicTestKafkaProducer(int accountsCount, int delay) {
-        this.accountCount = accountsCount;
+    public PeriodicTestKafkaProducer(int delay) {
         this.delay = delay;
     }
 

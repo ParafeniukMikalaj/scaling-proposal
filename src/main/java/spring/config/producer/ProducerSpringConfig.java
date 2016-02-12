@@ -33,8 +33,7 @@ public class ProducerSpringConfig {
 
     @Bean
     public PeriodicTestKafkaProducer periodicTestKafkaProducer(Config config) {
-        int accountsCount = config.getInt("kafka.producer.accounts.count");
         int delay = config.getInt("kafka.producer.delay");
-        return new PeriodicTestKafkaProducer(accountsCount, delay);
+        return new PeriodicTestKafkaProducer(delay);
     }
 }
