@@ -2,6 +2,8 @@ package producer;
 
 import common.Service;
 import kafka.TestKafkaProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 
@@ -34,6 +36,7 @@ public class PeriodicTestKafkaProducer implements Service {
 
     private void producePeriodically() {
         while (!Thread.currentThread().isInterrupted()) {
+            logger.info("Sending message to producer");
             producer.produce(++counter);
             try {
                 Thread.sleep(delay);
@@ -44,4 +47,5 @@ public class PeriodicTestKafkaProducer implements Service {
         }
     }
 
+    private static final Logger logger = LoggerFactory.getLogger(PeriodicTestKafkaProducer.class);
 }
