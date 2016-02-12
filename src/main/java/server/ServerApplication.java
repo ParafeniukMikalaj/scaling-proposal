@@ -22,31 +22,39 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     private Server server;
 
+    @Autowired
     private HashRing<Integer, Integer> hashRing;
 
+    @Autowired
     private Coordinator coordinator;
 
+    @Autowired
     private TestKafkaConsumer consumer;
 
-    private int partitionsCount;
-
+    @Autowired
     private Integer nodeId;
 
+    @Autowired
     private String host;
 
+    @Autowired
     private Integer port;
 
-    public ServerApplication(Integer nodeId, String host, Integer port) {
-        this.nodeId = nodeId;
-        this.host = host;
-        this.port = port;
+    public ServerApplication() {
+    }
+
+    public void start() {
         server  = new ServerImpl(port, this);
         Collection<Integer> splitPoints = hashRing.generateSplitPoints(nodeId);
         Node node = new NodeImpl(nodeId, host, port);
         CoordinatedNode coordinatedNode = new CoordinatedNodeImpl(node, splitPoints);
-//        coordinator.join(coordinatedNode);
-//        coordinator.subscribe(this);
-        //consumer.setListener(this);
+        coordinator.join(coordinatedNode);
+        coordinator.subscribe(this);
+        consumer.setListener(this);
+    }
+
+    public void stop() {
+        logger.warn("Stopping application");
     }
 
     @Override

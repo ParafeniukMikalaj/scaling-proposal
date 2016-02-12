@@ -69,7 +69,7 @@ public class ZkCoordinator implements Coordinator {
     }
 
     private static final int SESSION_TIMEOUT = 6000;
-    private final Collection<ZkConnection> zkConnections;
+    private final String zkConnectionString;
     private final String zkPath;
 
     private ZooKeeper zk;
@@ -89,9 +89,9 @@ public class ZkCoordinator implements Coordinator {
 
     private final Object lock = new Object();
 
-    public ZkCoordinator(Collection<ZkConnection> zkConnections, String zkPath) throws IOException {
-        Preconditions.checkArgument(!zkConnections.isEmpty(), "ZooKeeper connections can't be empty");
-        this.zkConnections = ImmutableList.copyOf(zkConnections);
+    public ZkCoordinator(String zkConnectionString, String zkPath) {
+        Preconditions.checkArgument(!zkConnectionString.isEmpty(), "ZooKeeper connections can't be empty");
+        this.zkConnectionString = zkConnectionString;
         this.zkPath = zkPath;
         establishConnection();
     }
@@ -220,7 +220,6 @@ public class ZkCoordinator implements Coordinator {
     }
 
     private void establishConnection() {
-        String zkConnectionString = createZkConnectionString(zkConnections);
         logger.debug("Establishing connection to ZooKeeper with connection string {}", zkConnectionString);
         stateWatcher = new ZkStateWatcher();
         pathWatcher = new ZkPathWatcher();
@@ -238,12 +237,6 @@ public class ZkCoordinator implements Coordinator {
 
     private void addPendingLeaveOperation(CoordinatedNode node) {
         pendingOperations.add(new NodeOperation(node, NodeOperation.Type.LEAVE));
-    }
-
-    private String createZkConnectionString(Collection<ZkConnection> zkConnections) {
-        return Joiner.on(",").join(zkConnections.stream()
-                .map(c -> c.host() + ":" + c.port())
-                .collect(Collectors.toList()));
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ZkCoordinator.class);

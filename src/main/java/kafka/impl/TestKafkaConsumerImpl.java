@@ -31,9 +31,7 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer {
     private volatile TestKafkaConsumerListener listener;
     private final int consumerId;
 
-    public TestKafkaConsumerImpl(String bootstrapServers, String topic, int consumerId, String host, int port) {
-        Collection<Integer> splitPoints = hashRing.generateSplitPoints(consumerId);
-        CoordinatedNode coordinatedNode = new CoordinatedNodeImpl(new NodeImpl(consumerId, host, port), splitPoints);
+    public TestKafkaConsumerImpl(String bootstrapServers, String topic, int consumerId) {
         this.topic = topic;
         this.bootstrapServers = bootstrapServers;
         this.consumerId = consumerId;

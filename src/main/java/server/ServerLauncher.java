@@ -1,9 +1,9 @@
 package server;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import java.util.concurrent.CountDownLatch;
 
 public class ServerLauncher {
 
@@ -21,6 +21,10 @@ public class ServerLauncher {
         context.refresh();
 
         ServerApplication application = beanFactory.getBean(ServerApplication.class);
-
+        application.start();
+        CountDownLatch latch = new CountDownLatch(1);
+        Runtime.getRuntime().addShutdownHook(new Thread(latch::countDown));
+        latch.await();
+        application.stop();
     }
 }
