@@ -1,5 +1,6 @@
 package server.impl;
 
+import com.google.common.collect.Maps;
 import model.Node;
 import model.impl.NodeImpl;
 import org.slf4j.Logger;
@@ -25,7 +26,7 @@ public class ServerImpl implements Server, ClientServerListener {
     private Selector clientSelector;
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
     private ServerContainer container;
-    private Map<Integer, ClientServer> clientServerMap;
+    private Map<Integer, ClientServer> clientServerMap = Maps.newHashMap();
 
     public ServerImpl(int port, ServerContainer container) {
         try {
@@ -63,7 +64,7 @@ public class ServerImpl implements Server, ClientServerListener {
     @Override
     public void disconnectClient(int clientId) {
         if (clientServerMap.containsKey(clientId)) {
-            clientServerMap.get(clientId).disconnect();
+            clientServerMap.get(clientId).close();
             clientServerMap.remove(clientId);
         }
     }

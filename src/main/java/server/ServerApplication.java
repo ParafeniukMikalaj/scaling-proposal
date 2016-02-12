@@ -1,6 +1,7 @@
 package server;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import common.Service;
 import coordination.CoordinatedNode;
@@ -18,6 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import server.impl.ServerImpl;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ServerApplication implements CoordinatorListener, TestKafkaConsumerListener, ServerContainer, Service {
 
@@ -41,13 +45,13 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
     @Autowired
     private Integer port;
 
-    public ServerApplication() {
-    }
+    private Multimap<Integer, Integer> hashRingState;
+    private Map<Integer, Node> latestCoordinationInfo = Maps.newHashMap();
 
     @Override
     public void start() {
         logger.info("Starting application");
-        server  = new ServerImpl(port, this);
+        server = new ServerImpl(port, this);
         Collection<Integer> splitPoints = hashRing.generateSplitPoints(nodeId);
         Node node = new NodeImpl(nodeId, host, port);
         CoordinatedNode coordinatedNode = new CoordinatedNodeImpl(node, splitPoints);
@@ -68,9 +72,12 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     @Override
     public void onStateUpdate(Collection<CoordinatedNode> nodes) {
-        Multimap<Integer, Integer> coordinationState = buildCoordinationState(nodes);
-        updateConsumerPartitions(coordinationState);
-        disconnectNotOwnedClients(coordinationState);
+        latestCoordinationInfo.clear();
+        nodes.stream().forEach(n -> latestCoordinationInfo.put(n.id(), n));
+        logger.info("Received state update {}", nodes);
+        hashRingState = buildCoordinationState(nodes);
+        updateConsumerPartitions(hashRingState);
+        disconnectNotOwnedClients(hashRingState);
     }
 
     private Multimap<Integer, Integer> buildCoordinationState(Collection<CoordinatedNode> nodes) {
@@ -85,17 +92,21 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     private void updateConsumerPartitions(Multimap<Integer, Integer> coordinationState) {
         Collection<Integer> ownedPartitions = hashRing.getPartitions(nodeId, coordinationState);
+        logger.info("Updating owned partition of consumer to {}", ownedPartitions);
         consumer.setPartitions(ownedPartitions);
     }
 
     private void disconnectNotOwnedClients(Multimap<Integer, Integer> coordinationState) {
-        server.connectedClients().stream()
-                .filter(client -> hashRing.hash(client, coordinationState) != nodeId)
-                .forEach(client -> server.disconnectClient(client));
+        List<Integer> notOwnedClients = server.connectedClients().stream()
+                .filter(client -> hashRing.hash(client, coordinationState).equals(nodeId))
+                .collect(Collectors.toList());
+        logger.info("Disconnecting {} not owned clients", notOwnedClients.size());
+        notOwnedClients.stream().forEach(client -> server.disconnectClient(client));
     }
 
     @Override
     public void consume(String record) {
+        logger.info("received record from consumer");
         String[] parts = record.split(" ");
         int clientId = Integer.parseInt(parts[0]);
         String message = parts[1];
@@ -106,7 +117,15 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     @Override
     public Node getNode(int clientId) {
-        return null;
+        logger.info("Client {} requests owner node", clientId);
+        if (latestCoordinationInfo == null) {
+            logger.info("Don't have coordination info. Owner request failure");
+            return null;
+        }
+        Integer nodeId = hashRing.hash(clientId, hashRingState);
+        Node ownerNode = latestCoordinationInfo.get(nodeId);
+        logger.info("Resolving client {} to {} node", clientId, nodeId);
+        return ownerNode;
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ServerApplication.class);

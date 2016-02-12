@@ -17,6 +17,7 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
     private final ClientServerListener listener;
 
     public ClientServerImpl(SocketChannel channel, ClientServerListener listener) {
+        logger.info("Create server to client connection");
         this.channel = channel;
         writer = new ServerWriterImpl(channel);
         reader = new ServerReaderImpl(channel, this);
@@ -25,31 +26,37 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
 
     @Override
     public void sendResolutionInfo(int clientId, Node node) {
+        logger.info("Request to send {} to {} as resolution info", node, clientId);
         writer.sendResolutionInfo(node.host(), node.port());
     }
 
     @Override
     public void sendUnknownResolutionInfo(int clientId) {
+        logger.info("Request to send {} to {} as resolution info", "null", clientId);
         writer.sendUnknownResolutionInfo();
     }
 
     @Override
     public void sendMessage(String message) {
+        logger.info("Request to send {} message to client", message);
         writer.sendMessage(message);
     }
 
     @Override
     public void onReadReady() {
+        logger.info("Read ready");
         reader.performRead();
     }
 
     @Override
     public void onWriteReady() {
+        logger.info("Write ready");
         writer.performWrite();
     }
 
     @Override
-    public void disconnect() {
+    public void close() {
+        logger.info("Request to close client server connection");
         try {
             channel.close();
         } catch (IOException e) {
@@ -59,6 +66,7 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
 
     @Override
     public void onResolveServer(int clientId) {
+        logger.info("Client {} requests resolution info", clientId);
         listener.onResolveServer(this, clientId);
     }
 

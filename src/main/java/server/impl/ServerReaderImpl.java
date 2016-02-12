@@ -28,6 +28,7 @@ public class ServerReaderImpl extends AbstractReader {
     }
 
     private void handleResolveMessage(String clientId) {
+        logger.info("Received resolve request from client {}", clientId);
         listener.onResolveServer(Integer.parseInt(clientId));
     }
 

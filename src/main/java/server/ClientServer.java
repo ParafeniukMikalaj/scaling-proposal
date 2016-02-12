@@ -8,5 +8,5 @@ public interface ClientServer {
     void sendMessage(String message);
     void onReadReady();
     void onWriteReady();
-    void disconnect();
+    void close();
 }
