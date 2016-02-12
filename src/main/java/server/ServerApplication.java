@@ -46,6 +46,7 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     @Override
     public void start() {
+        logger.info("Starting application");
         server  = new ServerImpl(port, this);
         Collection<Integer> splitPoints = hashRing.generateSplitPoints(nodeId);
         Node node = new NodeImpl(nodeId, host, port);
@@ -53,11 +54,16 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
         coordinator.join(coordinatedNode);
         coordinator.subscribe(this);
         consumer.setListener(this);
+
+        coordinator.start();
+        consumer.start();
     }
 
     @Override
     public void stop() {
         logger.warn("Stopping application");
+        consumer.stop();
+        coordinator.stop();
     }
 
     @Override

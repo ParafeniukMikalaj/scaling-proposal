@@ -27,6 +27,7 @@ public class TestKafkaProducerImpl implements TestKafkaProducer, Callback {
 
     @Override
     public void produce(int value) {
+        logger.info("Publish value {} to random partition", value);
         String stringValue = String.valueOf(value);
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, random.nextInt(partitionsCount), stringValue, stringValue);
         kafkaProducer.send(record, this);
