@@ -4,9 +4,13 @@ import model.Node;
 
 public class NodeImpl implements Node {
 
-    private final int id;
-    private final String host;
-    private final int port;
+    private int id;
+    private String host;
+    private int port;
+
+    public NodeImpl() {
+
+    }
 
     public NodeImpl(int id, String host, int port) {
         this.id = id;

@@ -3,7 +3,6 @@ package coordination.impl;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -14,6 +13,7 @@ import coordination.CoordinatedNode;
 import coordination.Coordinator;
 import coordination.CoordinatorListener;
 import org.apache.zookeeper.*;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +25,6 @@ import java.util.Queue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class ZkCoordinator implements Coordinator, Service {
 
@@ -96,7 +95,7 @@ public class ZkCoordinator implements Coordinator, Service {
         logger.info("Creating zookeeper coordinator");
         Preconditions.checkArgument(!zkConnectionString.isEmpty(), "ZooKeeper connections can't be empty");
         this.zkConnectionString = zkConnectionString;
-        this.zkPath = zkPath;
+        this.zkPath = zkPath.startsWith("/") ? zkPath : "/" + zkPath;
     }
 
     @Override
@@ -163,6 +162,8 @@ public class ZkCoordinator implements Coordinator, Service {
             this.connected = true;
             this.readOnly = false;
 
+            verifyRootPathExists();
+
             logger.info("Have {} pending operations", pendingOperations.size());
             while (!pendingOperations.isEmpty()) {
                 performOperation(pendingOperations.poll());
@@ -170,6 +171,22 @@ public class ZkCoordinator implements Coordinator, Service {
 
             logger.info("Will attempt to read state and notify listeners");
             readNodeStateAndNotifyListeners();
+        }
+    }
+
+    private void verifyRootPathExists() {
+        try {
+            Stat stat = zk.exists(zkPath, false);
+            logger.info("Zk path {} {}", zkPath, stat != null ? "exists" : "doesn't exist");
+            if (stat == null) {
+                logger.info("Creating zk path {}", zkPath);
+                zk.create(zkPath, new byte[] {}, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+        } catch (KeeperException e) {
+            logger.error("Error while checking path {} for existence", zkPath);
+        } catch (InterruptedException e) {
+            logger.warn("Interrupted while checking {} path for existence", zkPath);
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -221,7 +238,7 @@ public class ZkCoordinator implements Coordinator, Service {
 
     private void registerNode(CoordinatedNode node) {
         logger.info("Registering node {} in zookeeper", node);
-        Output output = new Output();
+        Output output = new Output(1000);
         kryo.writeObject(output, node);
         try {
             zk.create(zkPath + "/" + node, output.toBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
@@ -243,8 +260,8 @@ public class ZkCoordinator implements Coordinator, Service {
             logger.info("Got {} child nodes", children.size());
             for (String child : children) {
                 logger.info("Reading state of node {}", child);
-                Input input = new Input(zk.getData(child, pathWatcher, null));
-                CoordinatedNode node = kryo.readObject(input, CoordinatedNode.class);
+                Input input = new Input(zk.getData(zkPath + "/" + child, pathWatcher, null));
+                CoordinatedNode node = kryo.readObject(input, CoordinatedNodeImpl.class);
                 result.put(node.id(), node);
             }
             logger.info("Read nodes state success");

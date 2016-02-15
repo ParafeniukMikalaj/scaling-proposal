@@ -1,0 +1,12 @@
+<configuration>
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%-8r %d{ISO8601} %-8marker [%-5p] [%20.20t] %48.48c{1}:%-5L - %m%n</pattern>
+        </encoder>
+    </appender>
+    <logger name="default" level="info" />
+
+    <root level="info">
+        <appender-ref ref="stdout" />
+    </root>
+</configuration>

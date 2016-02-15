@@ -40,11 +40,11 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
 
     @Override
     public void start() {
-        setPartitions(topicPartitions);
     }
 
     @Override
     public void stop() {
+        logger.info("Shutting down current executor");
         executor.shutdown();
     }
 
@@ -57,7 +57,6 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
     public void setPartitions(Collection<Integer> partitions) {
         logger.info("Request to update partitions from {} to {}", topicPartitions, partitions);
         if (executor != null) {
-            logger.info("Shutting down current executor");
             executor.shutdown();
         }
 
@@ -78,7 +77,9 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
         executor.execute(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 ConsumerRecords<String, String> records = kafkaConsumer.poll(100);
-                logger.info("Received {} records from kafka. Listener is {}", records.count(), listener != null ? "not empty" : "empty");
+                if (!records.isEmpty()) {
+                    logger.info("Received {} records from kafka. Listener is {}", records.count(), listener != null ? "not empty" : "empty");
+                }
                 for (ConsumerRecord<String, String> record : records) {
                     if (listener != null) {
                         listener.consume(record.value());

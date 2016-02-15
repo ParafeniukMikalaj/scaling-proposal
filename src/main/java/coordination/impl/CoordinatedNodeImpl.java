@@ -8,7 +8,11 @@ import java.util.Collection;
 
 public class CoordinatedNodeImpl extends NodeImpl implements CoordinatedNode {
 
-    private final Collection<Integer> splitPoints;
+    private Collection<Integer> splitPoints;
+
+    public CoordinatedNodeImpl() {
+
+    }
 
     public CoordinatedNodeImpl(Node node, Collection<Integer> splitPoints) {
         super(node.id(), node.host(), node.port());

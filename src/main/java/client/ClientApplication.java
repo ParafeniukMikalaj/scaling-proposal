@@ -41,9 +41,14 @@ public class ClientApplication implements ClientContainer, Service {
     @Override
     public void start() {
         logger.info("Starting client application");
+        try {
+            selector = Selector.open();
+        } catch (IOException e) {
+            logger.error("Error while opening selector", e);
+        }
         executor.scheduleAtFixedRate(this::spawnClient, 0, spawnDelay, TimeUnit.MILLISECONDS);
         executor.scheduleAtFixedRate(this::decommissionClient, 0, decommissionDelay, TimeUnit.MILLISECONDS);
-        executor.execute(this::processIo );
+        executor.execute(this::processIo);
     }
 
     @Override
