@@ -61,6 +61,12 @@ public class ClientImpl implements Client {
     }
 
     @Override
+    public void onConnectionFail() {
+        logger.info("Client failed to connect to {}:{}", host, port);
+        container.requestReconnect(clientId);
+    }
+
+    @Override
     public void onReadReady() {
         logger.info("Client is ready to read");
         reader.performRead();

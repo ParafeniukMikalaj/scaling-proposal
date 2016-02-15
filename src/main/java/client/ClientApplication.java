@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 public class ClientApplication implements ClientContainer, Service {
 
@@ -26,12 +27,14 @@ public class ClientApplication implements ClientContainer, Service {
 
     private final Random random = new Random(137);
     private Map<Integer, SelectionKey> clientKeys = Maps.newHashMap();
+    private Map<Integer, Integer> clientReconnectCount = Maps.newHashMap();
 
     private Selector selector;
     private final long spawnDelay;
     private final long decommissionDelay;
 
-    public ClientApplication(int clientsCount, int spawnDelay, int decommissionDelay, Collection<InetSocketAddress> addresses) {
+    public ClientApplication(int clientsCount, int spawnDelay, int decommissionDelay,
+                             Collection<InetSocketAddress> addresses) {
         this.clientsCount = clientsCount;
         this.addresses = Lists.newArrayList(addresses);
         this.spawnDelay = spawnDelay;
@@ -46,9 +49,9 @@ public class ClientApplication implements ClientContainer, Service {
         } catch (IOException e) {
             logger.error("Error while opening selector", e);
         }
+        executor.execute(this::processIo);
         executor.scheduleAtFixedRate(this::spawnClient, 0, spawnDelay, TimeUnit.MILLISECONDS);
         executor.scheduleAtFixedRate(this::decommissionClient, 0, decommissionDelay, TimeUnit.MILLISECONDS);
-        executor.execute(this::processIo);
     }
 
     @Override
@@ -59,8 +62,13 @@ public class ClientApplication implements ClientContainer, Service {
 
     private void spawnClient() {
         logger.info("Automatic request to spawn client");
-        InetSocketAddress address = addresses.get(random.nextInt(addresses.size()));
         int clientId = random.nextInt(clientsCount);
+        spawnClient(clientId);
+    }
+
+    private void spawnClient(int clientId) {
+        logger.info("Spawning client {}", clientId);
+        InetSocketAddress address = addresses.get(random.nextInt(addresses.size()));
         spawnClient(clientId, address.getHostName(), address.getPort());
     }
 
@@ -74,9 +82,11 @@ public class ClientApplication implements ClientContainer, Service {
             SocketChannel socketChannel = SocketChannel.open();
             socketChannel.configureBlocking(false);
             Client client = new ClientImpl(socketChannel, clientId, host, port, this);
+            selector.wakeup();
             SelectionKey selectionKey = socketChannel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_READ, client);
             socketChannel.connect(new InetSocketAddress(host, port));
             clientKeys.put(clientId, selectionKey);
+            clientReconnectCount.put(clientId, 0);
         } catch (IOException e) {
             logger.error("IO while spawning client", e);
         }
@@ -89,43 +99,68 @@ public class ClientApplication implements ClientContainer, Service {
 
     private void decommissionClient(int clientId) {
         logger.info("Request to decommission client {}", clientId);
+        logger.info("Killing client client {}", clientId);
         if (!clientKeys.containsKey(clientId)) {
             logger.info("Client {} is not active", clientId);
             return;
         }
+        clientReconnectCount.remove(clientId);
         SelectionKey selectionKey = clientKeys.remove(clientId);
         Client client = (Client) selectionKey.attachment();
         client.close();
     }
 
     @Override
+    public void requestReconnect(int clientId) {
+        int reconnectCount = clientReconnectCount.get(clientId);
+        logger.info("Request #{} from client {} to reconnect", reconnectCount, clientId);
+        decommissionClient(clientId);
+        if (reconnectCount < 3) {
+            spawnClient(clientId);
+            clientReconnectCount.put(clientId, reconnectCount + 1);
+        } else {
+            logger.warn("Client {} exceeded number of reconnects.", clientId);
+        }
+    }
+
+    @Override
     public void requestReconnect(int clientId, String host, int port) {
-        logger.info("Request from client {} on {}:{} to reconnect", clientId, host, port);
+        logger.info("Request from client {} to reconnect to {}:{}", clientId, host, port);
         decommissionClient(clientId);
         spawnClient(clientId, host, port);
     }
 
     private void processIo() {
-        while(!Thread.currentThread().isInterrupted()) {
+        while (!Thread.currentThread().isInterrupted()) {
             try {
-                selector.select();
-                Set<SelectionKey> selectedKeys = selector.selectedKeys();
-                Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
-                while(keyIterator.hasNext()) {
-                    SelectionKey key = keyIterator.next();
-                    Client client = (Client) key.attachment();
-
-                    if (key.isConnectable()) {
-                        client.onConnect();
-                    } else if (key.isReadable()) {
-                        client.onReadReady();
-                    } else if (key.isWritable()) {
-                        client.onWriteReady();
-                    }
-                    keyIterator.remove();
+                int selectCount = selector.select();
+                if (selectCount == 0) {
+                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(100));
                 }
             } catch (IOException e) {
                 logger.error("Error while performing select", e);
+            }
+            Set<SelectionKey> selectedKeys = selector.selectedKeys();
+            Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+            while (keyIterator.hasNext()) {
+                SelectionKey key = keyIterator.next();
+                Client client = (Client) key.attachment();
+                SocketChannel channel = (SocketChannel) key.channel();
+
+                if (key.isConnectable()) {
+                    try {
+                        channel.finishConnect();
+                        client.onConnect();
+                    } catch (IOException e) {
+                        logger.error("Connection error. Client will retry.", e);
+                        client.onConnectionFail();
+                    }
+                } else if (key.isReadable()) {
+                    client.onReadReady();
+                } else if (key.isWritable()) {
+                    client.onWriteReady();
+                }
+                keyIterator.remove();
             }
         }
     }

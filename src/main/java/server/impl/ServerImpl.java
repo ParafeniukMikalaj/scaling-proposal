@@ -80,6 +80,7 @@ public class ServerImpl implements Server, ClientServerListener {
                     if (key.isAcceptable()) {
                         ServerSocketChannel channel = (ServerSocketChannel) key.channel();
                         SocketChannel clientChannel = channel.accept();
+                        clientChannel.configureBlocking(false);
                         ClientServer clientServer = new ClientServerImpl(clientChannel, this);
                         clientChannel.register(clientSelector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, clientServer);
                     }
