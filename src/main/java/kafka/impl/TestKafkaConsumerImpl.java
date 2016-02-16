@@ -63,7 +63,7 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
         if (topicPartitionRanges != null) {
             Set<Integer> oldPartitions = expandRanges(topicPartitionRanges);
             int acquiredPartitionsCount = Sets.difference(newPartitions, oldPartitions).size();
-            int lostPartitionsCount = Sets.difference(topicPartitionRanges, newPartitions).size();
+            int lostPartitionsCount = Sets.difference(oldPartitions, newPartitions).size();
             logger.info("Consumer {} lost {} and acquired {} partitionRanges", consumerId, lostPartitionsCount, acquiredPartitionsCount);
         }
 

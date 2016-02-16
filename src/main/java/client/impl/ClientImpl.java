@@ -70,13 +70,11 @@ public class ClientImpl implements Client {
 
     @Override
     public void onReadReady() {
-        logger.info("Client is ready to read");
         reader.performRead();
     }
 
     @Override
     public void onWriteReady() {
-        logger.info("Client is ready to write");
         writer.performWrite();
     }
 

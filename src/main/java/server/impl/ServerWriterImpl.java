@@ -35,7 +35,6 @@ public class ServerWriterImpl implements ServerWriter {
 
     @Override
     public void performWrite() {
-        logger.info("Perform write");
         writer.performWrite();
     }
 

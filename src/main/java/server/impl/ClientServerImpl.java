@@ -49,13 +49,11 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
 
     @Override
     public void onReadReady() {
-        logger.info("Read ready");
         reader.performRead();
     }
 
     @Override
     public void onWriteReady() {
-        logger.info("Write ready");
         writer.performWrite();
     }
 

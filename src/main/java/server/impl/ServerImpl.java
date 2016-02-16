@@ -126,9 +126,8 @@ public class ServerImpl implements Server, ClientServerListener {
         if (node == null) {
             clientServer.sendUnknownResolutionInfo(clientId);
         } else {
-            clientServer.sendResolutionInfo(clientId, node);
+            clientServer.sendResolutionInfo(clientId, new NodeImpl(node.id(), node.host(), node.port()));
         }
-        clientServer.sendResolutionInfo(clientId, new NodeImpl(0, "localhost", 0));
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ServerImpl.class);

@@ -32,12 +32,9 @@ public abstract class AbstractReader implements Reader {
             buffer.mark();
             int messageLen = buffer.getInt();
             if (buffer.remaining() >= messageLen) {
-                logger.info("Reader will try to parse message");
-                logger.info("Buffer before read position {} limit {}", buffer.position(), buffer.limit());
                 String message = new String(buffer.array(), buffer.position(), messageLen);
                 buffer.position(buffer.position() + messageLen);
                 buffer.compact();
-                logger.info("Buffer after read position {} limit {}", buffer.position(), buffer.limit());
                 String[] parts = message.split("\\|");
                 String type = parts[0];
                 String dataMessage = parts[1];
