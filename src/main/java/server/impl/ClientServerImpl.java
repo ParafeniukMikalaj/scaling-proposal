@@ -30,19 +30,19 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
     @Override
     public void sendResolutionInfo(int clientId, Node node) {
         logger.info("Request to send {} to {} as resolution info", node, clientId);
-        writer.sendResolutionInfo(node.host(), node.port());
+        handleWriteResult(writer.sendResolutionInfo(node.host(), node.port()));
     }
 
     @Override
     public void sendUnknownResolutionInfo(int clientId) {
         logger.info("Request to send {} to {} as resolution info", "null", clientId);
-        writer.sendUnknownResolutionInfo();
+        handleWriteResult(writer.sendUnknownResolutionInfo());
     }
 
     @Override
     public void sendMessage(String message) {
         logger.info("Request to send {} message to client", message);
-        writer.sendMessage(message);
+        handleWriteResult(writer.sendMessage(message));
     }
 
     @Override
@@ -54,8 +54,15 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
     }
 
     @Override
-    public void onWriteReady() {
-        writer.performWrite();
+    public int onWriteReady() {
+        return handleWriteResult(writer.performWrite());
+    }
+
+    private int handleWriteResult(int writeBytes) {
+        if (writeBytes == 0) {
+            listener.onWriteSuffer(this);
+        }
+        return writeBytes;
     }
 
     @Override

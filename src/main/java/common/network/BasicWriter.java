@@ -21,17 +21,22 @@ public class BasicWriter implements Writer {
     }
 
     @Override
-    public void performWrite() {
+    public int performWrite() {
+        int bytesWrite = -1;
         try {
             synchronized (lock) {
                 while (buffer.hasRemaining()) {
-                    channel.write(buffer);
+                    bytesWrite = channel.write(buffer);
+                    if (bytesWrite == 0) {
+                        break;
+                    }
                 }
                 buffer.compact();
             }
         } catch (IOException e) {
             logger.error("Unexpected error while writing buffer to channel. It should be already connected", e);
         }
+        return bytesWrite;
     }
 
     @Override
@@ -44,7 +49,7 @@ public class BasicWriter implements Writer {
         }
     }
 
-    public void writeMessage(String type, String message) {
+    public int writeMessage(String type, String message) {
         String messageToSend = type + "|" + message;
         byte[] messageBytes = messageToSend.getBytes();
         synchronized (lock) {
@@ -52,7 +57,7 @@ public class BasicWriter implements Writer {
             buffer.put(messageBytes);
             buffer.flip();
         }
-        performWrite();
+        return performWrite();
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ClientWriterImpl.class);

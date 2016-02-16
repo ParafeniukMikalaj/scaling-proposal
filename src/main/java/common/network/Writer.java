@@ -1,6 +1,6 @@
 package common.network;
 
 public interface Writer {
-    void performWrite();
+    int performWrite();
     void close();
 }

@@ -30,7 +30,7 @@ public class ClientImpl implements Client {
     @Override
     public void resolveServer() {
         logger.info("Client {} on {}:{} requests resolution", clientId, host, port);
-        writer.resolveServer(clientId);
+        handleWriteResult(writer.resolveServer(clientId));
     }
 
     @Override
@@ -79,8 +79,15 @@ public class ClientImpl implements Client {
     }
 
     @Override
-    public void onWriteReady() {
-        writer.performWrite();
+    public int onWriteReady() {
+        return handleWriteResult(writer.performWrite());
+    }
+
+    private int handleWriteResult(int writeBytes) {
+        if (writeBytes == 0) {
+            container.onWriteSuffer(this);
+        }
+        return writeBytes;
     }
 
     @Override

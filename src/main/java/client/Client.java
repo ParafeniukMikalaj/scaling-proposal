@@ -5,6 +5,6 @@ public interface Client extends ClientReaderListener {
     void onConnect();
     void onConnectionFail();
     void onReadReady();
-    void onWriteReady();
+    int onWriteReady();
     void close();
 }

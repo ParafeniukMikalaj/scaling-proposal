@@ -16,9 +16,9 @@ public class ClientWriterImpl implements ClientWriter {
     }
 
     @Override
-    public void performWrite() {
+    public int performWrite() {
         logger.info("Request to perform write");
-        writer.performWrite();
+        return writer.performWrite();
     }
 
     @Override
@@ -28,9 +28,9 @@ public class ClientWriterImpl implements ClientWriter {
     }
 
     @Override
-    public void resolveServer(int clientId) {
+    public int resolveServer(int clientId) {
         logger.info("Request to send resolve message");
-        writer.writeMessage("resolve", String.valueOf(clientId));
+        return writer.writeMessage("resolve", String.valueOf(clientId));
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ClientWriterImpl.class);

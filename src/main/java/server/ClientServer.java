@@ -7,6 +7,6 @@ public interface ClientServer {
     void sendUnknownResolutionInfo(int clientId);
     void sendMessage(String message);
     void onReadReady();
-    void onWriteReady();
+    int onWriteReady();
     void close();
 }

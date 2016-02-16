@@ -100,8 +100,7 @@ public class ServerImpl implements Server, ClientServerListener {
                         clientChannel.configureBlocking(false);
                         ClientServer clientServer = new ClientServerImpl(clientChannel, this);
                         clientSelector.wakeup();
-                        SelectionKey selectionKey = clientChannel
-                                .register(clientSelector, SelectionKey.OP_READ | SelectionKey.OP_CONNECT, clientServer);
+                        SelectionKey selectionKey = clientChannel.register(clientSelector, SelectionKey.OP_READ, clientServer);
                         clientKeyMap.put(clientServer, selectionKey);
                     }
                     keyIterator.remove();
@@ -127,14 +126,26 @@ public class ServerImpl implements Server, ClientServerListener {
             while (keyIterator.hasNext()) {
                 SelectionKey key = keyIterator.next();
                 ClientServer clientServer = (ClientServer) key.attachment();
-                if (key.isConnectable()) {
-                    logger.info("Client connect");
-                }
                 if (key.isReadable()) {
                     clientServer.onReadReady();
                 }
+                if (key.isWritable()) {
+                    int writeBytes = clientServer.onWriteReady();
+                    if (writeBytes != 0) {
+                        key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
+                    }
+                }
                 keyIterator.remove();
             }
+        }
+    }
+
+    @Override
+    public void onWriteSuffer(ClientServerImpl clientServer) {
+        logger.info("Server writes suffer");
+        SelectionKey key = clientKeyMap.get(clientServer);
+        if (key != null) {
+            key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
         }
     }
 

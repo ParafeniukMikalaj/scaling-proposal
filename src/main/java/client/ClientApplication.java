@@ -111,6 +111,16 @@ public class ClientApplication implements ClientContainer, Service {
     }
 
     @Override
+    public void onWriteSuffer(ClientImpl client) {
+        logger.info("Client writes suffer");
+        Optional<SelectionKey> selectionKeyOption = selector.keys().stream().filter(k -> k.attachment().equals(client)).findFirst();
+        if (selectionKeyOption.isPresent()) {
+            SelectionKey key = selectionKeyOption.get();
+            key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+        }
+    }
+
+    @Override
     public void onConnectinEstablished(int clientId) {
         clientReconnectCount.put(clientId, 0);
     }
@@ -160,10 +170,16 @@ public class ClientApplication implements ClientContainer, Service {
                         logger.error("Connection error. Client will retry.", e);
                         client.onConnectionFail();
                     }
-                } else if (key.isReadable()) {
+                }
+                if (key.isReadable()) {
                     client.onReadReady();
-                } else if (key.isWritable()) {
-                    client.onWriteReady();
+                }
+                if (key.isWritable()) {
+                    int writeBytes = client.onWriteReady();
+                    if (writeBytes != 0) {
+                        logger.info("Removing OP_WRITE flag from selection");
+                        key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
+                    }
                 }
                 keyIterator.remove();
             }
