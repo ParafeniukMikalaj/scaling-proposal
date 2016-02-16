@@ -25,7 +25,7 @@ public class ServerSpringConfig {
 
     @Bean
     public Integer partitionsCount(Config config) {
-        return config.getInt("partitions.count");
+        return config.getInt("kafka.partitions");
     }
 
     @Bean

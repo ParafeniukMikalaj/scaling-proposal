@@ -52,7 +52,7 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
     @Override
     public void start() {
         logger.info("Starting application");
-        server = new ServerImpl(port, this);
+        server = new ServerImpl(host, port, this);
         Collection<Integer> splitPoints = hashRing.generateSplitPoints(nodeId);
         Node node = new NodeImpl(nodeId, host, port);
         CoordinatedNode coordinatedNode = new CoordinatedNodeImpl(node, splitPoints);
@@ -99,7 +99,7 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     private void disconnectNotOwnedClients(Multimap<Integer, Integer> coordinationState) {
         List<Integer> notOwnedClients = server.connectedClients().stream()
-                .filter(client -> hashRing.hash(client, coordinationState).equals(nodeId))
+                .filter(client -> !hashRing.hash(client, coordinationState).equals(nodeId))
                 .collect(Collectors.toList());
         logger.info("Disconnecting {} not owned clients", notOwnedClients.size());
         notOwnedClients.stream().forEach(client -> server.disconnectClient(client));
@@ -107,10 +107,10 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
 
     @Override
     public void consume(String record) {
-        logger.info("received record from consumer");
-        String[] parts = record.split(" ");
+        String[] parts = record.split("\\|");
         int clientId = Integer.parseInt(parts[0]);
         String message = parts[1];
+        logger.info("received record {} from consumer", record);
         if (server.containsClient(clientId)) {
             server.sendMessage(clientId, message);
         }

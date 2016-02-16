@@ -17,13 +17,14 @@ public class ClientImpl implements Client {
     private final ClientContainer container;
     private final String host;
     private final int port;
-    private final ByteBuffer buffer = ByteBuffer.allocate(1000);
 
     public ClientImpl(SocketChannel channel, int clientId, String host, int port, ClientContainer container) {
         logger.info("Starting client to listen to {}:{}", host, port);
         this.clientId = clientId;
-        this.reader = new ClientReaderImpl(channel, buffer, this);
-        this.writer = new ClientWriterImpl(channel, buffer);
+        ByteBuffer readBuffer = ByteBuffer.allocate(1000);
+        ByteBuffer writeBuffer = ByteBuffer.allocate(1000);
+        this.reader = new ClientReaderImpl(channel, readBuffer, this);
+        this.writer = new ClientWriterImpl(channel, writeBuffer);
         this.host = host;
         this.port = port;
         this.container = container;

@@ -29,10 +29,14 @@ public class ServerImpl implements Server, ClientServerListener {
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
     private ServerContainer container;
     private Map<Integer, ClientServer> clientServerMap = Maps.newHashMap();
+    private final String host;
+    private final int port;
 
-    public ServerImpl(int port, ServerContainer container) {
+    public ServerImpl(String host, int port, ServerContainer container) {
+        this.host = host;
+        this.port = port;
+        this.container = container;
         try {
-            this.container = container;
             serverSelector = Selector.open();
             clientSelector = Selector.open();
             ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
@@ -126,6 +130,10 @@ public class ServerImpl implements Server, ClientServerListener {
         if (node == null) {
             clientServer.sendUnknownResolutionInfo(clientId);
         } else {
+            if (this.port == node.port() && this.host.equals(node.host())) {
+                clientServerMap.put(clientId, clientServer);
+                logger.info("Client {} is now connected", clientId);
+            }
             clientServer.sendResolutionInfo(clientId, new NodeImpl(node.id(), node.host(), node.port()));
         }
     }

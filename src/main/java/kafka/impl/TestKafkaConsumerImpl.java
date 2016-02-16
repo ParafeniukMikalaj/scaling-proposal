@@ -17,6 +17,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -54,9 +55,7 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
     @Override
     public void setPartitions(Collection<Range> partitionRanges) {
         logger.info("Request to update partitionRanges from {} to {}", topicPartitionRanges, partitionRanges);
-        if (executor != null) {
-            executor.shutdown();
-        }
+        stopPreviousExecutor();
 
         Set<Integer> newPartitions = expandRanges(partitionRanges);
 
@@ -91,6 +90,18 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
             }
             logger.info("Consumer thread interrupted");
         });
+    }
+
+    private void stopPreviousExecutor() {
+        if (executor != null) {
+            executor.shutdown();
+            try {
+                executor.awaitTermination(1, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            executor.shutdownNow();
+        }
     }
 
     private Set<Integer> expandRanges(Collection<Range> ranges) {

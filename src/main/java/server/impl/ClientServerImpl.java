@@ -2,6 +2,7 @@ package server.impl;
 
 import common.network.Reader;
 import model.Node;
+import org.jboss.netty.util.internal.ByteBufferUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientServer;
@@ -19,13 +20,14 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
     private final Reader reader;
     private final ServerWriter writer;
     private final ClientServerListener listener;
-    private final ByteBuffer buffer = ByteBuffer.allocate(1000);
 
     public ClientServerImpl(SocketChannel channel, ClientServerListener listener) {
         logger.info("Create server to client connection");
         this.channel = channel;
-        writer = new ServerWriterImpl(channel, buffer);
-        reader = new ServerReaderImpl(channel, buffer, this);
+        ByteBuffer writeBuffer = ByteBuffer.allocate(1000);
+        ByteBuffer readBuffer = ByteBuffer.allocate(1000);
+        writer = new ServerWriterImpl(channel, writeBuffer);
+        reader = new ServerReaderImpl(channel, readBuffer, this);
         this.listener = listener;
     }
 
