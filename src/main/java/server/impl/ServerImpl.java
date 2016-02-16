@@ -77,6 +77,8 @@ public class ServerImpl implements Server, ClientServerListener {
         if (clientServer == null) {
             return;
         }
+        clientServer.close();
+
         SelectionKey selectionKey = clientKeyMap.remove(clientServer);
         if (selectionKey != null) {
             selectionKey.cancel();
@@ -152,7 +154,13 @@ public class ServerImpl implements Server, ClientServerListener {
 
     @Override
     public void onClientDisconnect(ClientServerImpl clientServer) {
+        if (clientServer == null) {
+            return;
+        }
         Integer clientId = clientServerMap.inverse().get(clientServer);
+        if (clientId == null) {
+            return;
+        }
         logger.info("client {} refused connection", clientId);
         disconnectClient(clientId);
     }
