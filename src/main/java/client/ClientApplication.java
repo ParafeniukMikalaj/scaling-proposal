@@ -169,6 +169,7 @@ public class ClientApplication implements ClientContainer, Service {
                     } catch (IOException e) {
                         logger.error("Connection error. Client will retry.", e);
                         client.onConnectionFail();
+                        continue;
                     }
                 }
                 if (key.isReadable()) {

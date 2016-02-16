@@ -132,6 +132,7 @@ public class ServerImpl implements Server, ClientServerListener {
                 if (key.isWritable()) {
                     int writeBytes = clientServer.onWriteReady();
                     if (writeBytes != 0) {
+                        logger.info("Removing OP_WRITE flag from selection");
                         key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
                     }
                 }

@@ -12,6 +12,7 @@ public class BasicWriter implements Writer {
 
     private final ByteBuffer buffer = ByteBuffer.allocate(100);
     private final SocketChannel channel;
+    private int bytesToSend = 0;
 
     private final Object lock = new Object();
 
@@ -22,21 +23,22 @@ public class BasicWriter implements Writer {
 
     @Override
     public int performWrite() {
-        int bytesWrite = -1;
-        try {
-            synchronized (lock) {
-                while (buffer.hasRemaining()) {
+        synchronized (lock) {
+            int bytesWrite = -1;
+            try {
+                while (buffer.hasRemaining() && bytesToSend > 0) {
                     bytesWrite = channel.write(buffer);
+                    bytesToSend -= bytesWrite;
                     if (bytesWrite == 0) {
                         break;
                     }
                 }
                 buffer.compact();
+            } catch (IOException e) {
+                logger.error("Unexpected error while writing buffer to channel. It should be already connected", e);
             }
-        } catch (IOException e) {
-            logger.error("Unexpected error while writing buffer to channel. It should be already connected", e);
+            return bytesWrite;
         }
-        return bytesWrite;
     }
 
     @Override
@@ -56,6 +58,7 @@ public class BasicWriter implements Writer {
             buffer.putInt(messageBytes.length);
             buffer.put(messageBytes);
             buffer.flip();
+            bytesToSend += messageBytes.length + 4;
         }
         return performWrite();
     }
