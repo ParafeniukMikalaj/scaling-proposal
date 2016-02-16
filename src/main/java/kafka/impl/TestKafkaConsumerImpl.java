@@ -2,12 +2,9 @@ package kafka.impl;
 
 import com.google.common.collect.Sets;
 import common.Service;
-import coordination.CoordinatedNode;
-import coordination.impl.CoordinatedNodeImpl;
-import hashing.HashRing;
 import kafka.TestKafkaConsumer;
 import kafka.TestKafkaConsumerListener;
-import model.impl.NodeImpl;
+import model.Range;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -21,11 +18,12 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
 
     private final String topic;
-    private Set<Integer> topicPartitions;
+    private Set<Range> topicPartitionRanges;
     private ExecutorService executor;
     private final String bootstrapServers;
     private volatile TestKafkaConsumerListener listener;
@@ -54,23 +52,28 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
     }
 
     @Override
-    public void setPartitions(Collection<Integer> partitions) {
-        logger.info("Request to update partitions from {} to {}", topicPartitions, partitions);
+    public void setPartitions(Collection<Range> partitionRanges) {
+        logger.info("Request to update partitionRanges from {} to {}", topicPartitionRanges, partitionRanges);
         if (executor != null) {
             executor.shutdown();
         }
 
-        if (topicPartitions != null) {
-            Set<Integer> newPartitions = Sets.newHashSet(partitions);
-            int acquiredPartitionsCount = Sets.difference(newPartitions, topicPartitions).size();
-            int lostPartitionsCount = Sets.difference(topicPartitions, newPartitions).size();
-            logger.info("Consumer {} lost {} and acquired {} partitions", consumerId, lostPartitionsCount, acquiredPartitionsCount);
-            topicPartitions = newPartitions;
+        Set<Integer> newPartitions = expandRanges(partitionRanges);
+
+        if (topicPartitionRanges != null) {
+            Set<Integer> oldPartitions = expandRanges(topicPartitionRanges);
+            int acquiredPartitionsCount = Sets.difference(newPartitions, oldPartitions).size();
+            int lostPartitionsCount = Sets.difference(topicPartitionRanges, newPartitions).size();
+            logger.info("Consumer {} lost {} and acquired {} partitionRanges", consumerId, lostPartitionsCount, acquiredPartitionsCount);
         }
+
+        topicPartitionRanges = Sets.newHashSet(partitionRanges);
+
+        Set<Integer> topicPartitions = expandRanges(topicPartitionRanges);
 
         Properties consumerProperties = KafkaProperties.consumerProperties(bootstrapServers);
         final KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(consumerProperties);
-        kafkaConsumer.assign(partitions.stream().map(p -> new TopicPartition(topic, p)).collect(Collectors.toList()));
+        kafkaConsumer.assign(topicPartitions.stream().map(p -> new TopicPartition(topic, p)).collect(Collectors.toList()));
 
         logger.info("Starting new consumer executor");
         executor = Executors.newSingleThreadExecutor();
@@ -88,6 +91,12 @@ public class TestKafkaConsumerImpl implements TestKafkaConsumer, Service {
             }
             logger.info("Consumer thread interrupted");
         });
+    }
+
+    private Set<Integer> expandRanges(Collection<Range> ranges) {
+        Set<Integer> result = Sets.newHashSet();
+        ranges.forEach(r -> result.addAll(IntStream.range(r.from(), r.to()).boxed().collect(Collectors.toList())));
+        return result;
     }
 
     private static final Logger logger = LoggerFactory.getLogger(TestKafkaConsumerImpl.class);

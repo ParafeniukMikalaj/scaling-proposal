@@ -12,6 +12,7 @@ import hashing.HashRing;
 import kafka.TestKafkaConsumer;
 import kafka.TestKafkaConsumerListener;
 import model.Node;
+import model.Range;
 import model.impl.NodeImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +92,7 @@ public class ServerApplication implements CoordinatorListener, TestKafkaConsumer
     }
 
     private void updateConsumerPartitions(Multimap<Integer, Integer> coordinationState) {
-        Collection<Integer> ownedPartitions = hashRing.getPartitions(nodeId, coordinationState);
+        Collection<Range> ownedPartitions = hashRing.getPartitions(nodeId, coordinationState);
         logger.info("Updating owned partition of consumer to {}", ownedPartitions);
         consumer.setPartitions(ownedPartitions);
     }

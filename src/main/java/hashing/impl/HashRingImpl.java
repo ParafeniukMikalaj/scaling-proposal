@@ -1,8 +1,13 @@
 package hashing.impl;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import hashing.HashRing;
+import model.NodeRange;
+import model.Range;
+import model.impl.NodeRangeImpl;
+import model.impl.RangeImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +62,7 @@ public class HashRingImpl implements HashRing<Integer, Integer> {
     public Collection<Integer> generateSplitPoints(Integer nodeId) {
         List<Integer> splitPoints = IntStream
                 .range(0, splitPointsNumber)
-                .map(x -> random.nextInt(partitionsCount))
+                .map(x -> random.nextInt(partitionsCount) + 1)
                 .boxed()
                 .collect(Collectors.toList());
         logger.info("Generated {} split points for node {}", splitPoints, nodeId);
@@ -69,19 +74,42 @@ public class HashRingImpl implements HashRing<Integer, Integer> {
         int partition = value.hashCode() % partitionsCount;
         SortedSet<HashRingEntry> ringEntries = buildRingEntries(coordinatorState);
         Integer partitionOwner = getPartitionOwner(ringEntries, partition);
-        logger.info("Request to hash value {}: {} belongs to partition {}, which belongs to node {}", value, value, partition, partitionOwner);
+        logger.info("Request to hash value {}: {} belongs to partition {}, which belongs to node {}", value, value,
+                partition, partitionOwner);
         return partitionOwner;
     }
 
     @Override
-    public Collection<Integer> getPartitions(Integer nodeId, Multimap<Integer, Integer> coordinatorState) {
+    public Collection<Range> getPartitions(Integer nodeId, Multimap<Integer, Integer> coordinatorState) {
         SortedSet<HashRingEntry> ringEntries = buildRingEntries(coordinatorState);
-        List<Integer> ownedPartitions = IntStream.range(0, partitionsCount)
-                .filter(p -> getPartitionOwner(ringEntries, p).equals(nodeId))
-                .boxed()
-                .collect(Collectors.toList());
-        logger.info("Node {} owned partitions {}", nodeId, ownedPartitions);
-        return ownedPartitions;
+        Collection<NodeRange> ranges = Lists.newArrayList();
+        Integer rangeStart = 0;
+        Integer rangeEnd = 0;
+        Integer previousNode = ringEntries.first().nodeId();
+        for (HashRingEntry entry : ringEntries) {
+            int splitPoint = entry.splitPoint();
+            int currentNode = entry.nodeId();
+            if (splitPoint - rangeEnd > 0) {
+                if (currentNode != previousNode) {
+                    ranges.add(new NodeRangeImpl(rangeStart, rangeEnd, previousNode));
+                    rangeStart = rangeEnd;
+                    rangeEnd = splitPoint;
+                    previousNode = currentNode;
+                } else {
+                    rangeEnd = splitPoint;
+                }
+            }
+        }
+
+        int firstNode = ringEntries.first().nodeId();
+        if (firstNode != previousNode) {
+            ranges.add(new NodeRangeImpl(rangeStart, rangeEnd, previousNode));
+            ranges.add(new NodeRangeImpl(rangeEnd, partitionsCount, firstNode));
+        } else {
+            ranges.add(new NodeRangeImpl(rangeStart, partitionsCount, previousNode));
+        }
+
+        return ranges.stream().filter(r -> r.node() == nodeId).map(r -> new RangeImpl(r.from(), r.to())).collect(Collectors.toList());
     }
 
     private Integer getPartitionOwner(SortedSet<HashRingEntry> ringEntries, int partition) {
