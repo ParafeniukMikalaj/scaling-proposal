@@ -47,6 +47,7 @@ public class ClientImpl implements Client {
         if (!success) {
             logger.info("Resolution request retry");
             resolveServer();
+            return;
         }
         if (!host.equals(this.host) || port != this.port) {
             logger.info("Client should be redirected to {}:{} while connected to {}:{}. Request reconnect.",
@@ -54,7 +55,9 @@ public class ClientImpl implements Client {
             reader.close();
             writer.close();
             container.requestReconnect(clientId, host, port);
+            return;
         }
+        container.onConnectinEstablished(clientId);
     }
 
     @Override
@@ -71,7 +74,11 @@ public class ClientImpl implements Client {
 
     @Override
     public void onReadReady() {
-        reader.performRead();
+        int bytesRead = reader.performRead();
+        if (bytesRead == -1) {
+            logger.info("Server closed connection of client {}", clientId);
+            container.requestReconnect(clientId);
+        }
     }
 
     @Override

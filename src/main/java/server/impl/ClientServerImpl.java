@@ -51,7 +51,10 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
 
     @Override
     public void onReadReady() {
-        reader.performRead();
+        int bytesRead = reader.performRead();
+        if (bytesRead == -1) {
+            listener.onClientDisconnect(this);
+        }
     }
 
     @Override

@@ -111,6 +111,11 @@ public class ClientApplication implements ClientContainer, Service {
     }
 
     @Override
+    public void onConnectinEstablished(int clientId) {
+        clientReconnectCount.put(clientId, 0);
+    }
+
+    @Override
     public void requestReconnect(int clientId) {
         int reconnectCount = clientReconnectCount.get(clientId);
         logger.info("Request #{} from client {} to reconnect", reconnectCount, clientId);

@@ -1,5 +1,7 @@
 package server.impl;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
 import model.Node;
 import model.impl.NodeImpl;
@@ -28,7 +30,8 @@ public class ServerImpl implements Server, ClientServerListener {
     private Selector clientSelector;
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
     private ServerContainer container;
-    private Map<Integer, ClientServer> clientServerMap = Maps.newHashMap();
+    private BiMap<Integer, ClientServer> clientServerMap = HashBiMap.create();
+    private Map<ClientServer, SelectionKey> clientKeyMap = Maps.newHashMap();
     private final String host;
     private final int port;
 
@@ -69,10 +72,16 @@ public class ServerImpl implements Server, ClientServerListener {
 
     @Override
     public void disconnectClient(int clientId) {
-        if (clientServerMap.containsKey(clientId)) {
-            clientServerMap.get(clientId).close();
-            clientServerMap.remove(clientId);
+        logger.info("disonnecting client {}", clientId);
+        ClientServer clientServer = clientServerMap.remove(clientId);
+        if (clientServer == null) {
+            return;
         }
+        SelectionKey selectionKey = clientKeyMap.remove(clientServer);
+        if (selectionKey != null) {
+            selectionKey.cancel();
+        }
+        clientServerMap.remove(clientId);
     }
 
     private void processConnections() {
@@ -89,7 +98,9 @@ public class ServerImpl implements Server, ClientServerListener {
                         clientChannel.configureBlocking(false);
                         ClientServer clientServer = new ClientServerImpl(clientChannel, this);
                         clientSelector.wakeup();
-                        clientChannel.register(clientSelector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, clientServer);
+                        SelectionKey selectionKey = clientChannel
+                                .register(clientSelector, SelectionKey.OP_READ | SelectionKey.OP_CONNECT, clientServer);
+                        clientKeyMap.put(clientServer, selectionKey);
                     }
                     keyIterator.remove();
                 }
@@ -114,10 +125,11 @@ public class ServerImpl implements Server, ClientServerListener {
             while (keyIterator.hasNext()) {
                 SelectionKey key = keyIterator.next();
                 ClientServer clientServer = (ClientServer) key.attachment();
+                if (key.isConnectable()) {
+                    logger.info("Client connect");
+                }
                 if (key.isReadable()) {
                     clientServer.onReadReady();
-                } else if (key.isWritable()) {
-                    clientServer.onWriteReady();
                 }
                 keyIterator.remove();
             }
@@ -136,6 +148,13 @@ public class ServerImpl implements Server, ClientServerListener {
             }
             clientServer.sendResolutionInfo(clientId, new NodeImpl(node.id(), node.host(), node.port()));
         }
+    }
+
+    @Override
+    public void onClientDisconnect(ClientServerImpl clientServer) {
+        Integer clientId = clientServerMap.inverse().get(clientServer);
+        logger.info("client {} refused connection", clientId);
+        disconnectClient(clientId);
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ServerImpl.class);

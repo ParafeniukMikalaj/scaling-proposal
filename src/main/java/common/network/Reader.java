@@ -1,6 +1,6 @@
 package common.network;
 
 public interface Reader {
-    void performRead();
+    int performRead();
     void close();
 }

@@ -19,11 +19,12 @@ public abstract class AbstractReader implements Reader {
     }
 
     @Override
-    public void performRead() {
+    public int performRead() {
+        int bytesRead = 0;
         try {
             // TODO maybe while loop should be used
             buffer.clear();
-            channel.read(buffer);
+            bytesRead = channel.read(buffer);
             buffer.flip();
         } catch (IOException e) {
             logger.error("Unexpected error while writing buffer to channel. It should be already connected", e);
@@ -43,7 +44,7 @@ public abstract class AbstractReader implements Reader {
                 buffer.reset();
             }
         }
-
+        return bytesRead;
     }
 
     @Override
