@@ -121,7 +121,7 @@ public class ClientApplication implements ClientContainer, Service {
     }
 
     @Override
-    public void onConnectinEstablished(int clientId) {
+    public void onConnectionEstablished(int clientId) {
         clientReconnectCount.put(clientId, 0);
     }
 
@@ -160,11 +160,10 @@ public class ClientApplication implements ClientContainer, Service {
             while (keyIterator.hasNext()) {
                 SelectionKey key = keyIterator.next();
                 Client client = (Client) key.attachment();
-                SocketChannel channel = (SocketChannel) key.channel();
 
                 if (key.isConnectable()) {
                     try {
-                        channel.finishConnect();
+                        ((SocketChannel) key.channel()).finishConnect();
                         client.onConnect();
                     } catch (IOException e) {
                         logger.error("Connection error. Client will retry.", e);
@@ -173,10 +172,10 @@ public class ClientApplication implements ClientContainer, Service {
                     }
                 }
                 if (key.isReadable()) {
-                    client.onReadReady();
+                    client.doRead();
                 }
                 if (key.isWritable()) {
-                    int writeBytes = client.onWriteReady();
+                    int writeBytes = client.doWrite();
                     if (writeBytes != 0) {
                         logger.info("Removing OP_WRITE flag from selection");
                         key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);

@@ -127,10 +127,10 @@ public class ServerImpl implements Server, ClientServerListener {
                 SelectionKey key = keyIterator.next();
                 ClientServer clientServer = (ClientServer) key.attachment();
                 if (key.isReadable()) {
-                    clientServer.onReadReady();
+                    clientServer.doRead();
                 }
                 if (key.isWritable()) {
-                    int writeBytes = clientServer.onWriteReady();
+                    int writeBytes = clientServer.doWrite();
                     if (writeBytes != 0) {
                         logger.info("Removing OP_WRITE flag from selection");
                         key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);

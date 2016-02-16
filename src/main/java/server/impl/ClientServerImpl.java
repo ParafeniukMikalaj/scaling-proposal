@@ -14,14 +14,12 @@ import java.nio.channels.SocketChannel;
 
 public class ClientServerImpl implements ClientServer, ServerReaderListener {
 
-    private final SocketChannel channel;
     private final Reader reader;
     private final ServerWriter writer;
     private final ClientServerListener listener;
 
     public ClientServerImpl(SocketChannel channel, ClientServerListener listener) {
         logger.info("Create server to client connection");
-        this.channel = channel;
         writer = new ServerWriterImpl(channel);
         reader = new ServerReaderImpl(channel, this);
         this.listener = listener;
@@ -46,7 +44,7 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
     }
 
     @Override
-    public void onReadReady() {
+    public void doRead() {
         int bytesRead = reader.performRead();
         if (bytesRead == -1) {
             listener.onClientDisconnect(this);
@@ -54,7 +52,7 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
     }
 
     @Override
-    public int onWriteReady() {
+    public int doWrite() {
         return handleWriteResult(writer.performWrite());
     }
 
@@ -68,11 +66,8 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
     @Override
     public void close() {
         logger.info("Request to close client server connection");
-        try {
-            channel.close();
-        } catch (IOException e) {
-            logger.error("Error while closing connection", e);
-        }
+        reader.close();
+        writer.close();
     }
 
     @Override

@@ -6,7 +6,7 @@ public interface ClientServer {
     void sendResolutionInfo(int clientId, Node node);
     void sendUnknownResolutionInfo(int clientId);
     void sendMessage(String message);
-    void onReadReady();
-    int onWriteReady();
+    void doRead();
+    int doWrite();
     void close();
 }

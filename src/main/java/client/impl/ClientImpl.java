@@ -2,6 +2,7 @@ package client.impl;
 
 import client.Client;
 import client.ClientContainer;
+import client.ClientReaderListener;
 import client.ClientWriter;
 import common.network.Reader;
 import org.slf4j.Logger;
@@ -9,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.channels.SocketChannel;
 
-public class ClientImpl implements Client {
+public class ClientImpl implements Client, ClientReaderListener {
     private final int clientId;
     private final Reader reader;
     private final ClientWriter writer;
@@ -34,6 +35,46 @@ public class ClientImpl implements Client {
     }
 
     @Override
+    public void onConnect() {
+        logger.info("Client connected to {}:{}", host, port);
+        resolveServer();
+    }
+
+    @Override
+    public void onConnectionFail() {
+        logger.info("Client failed to connect to {}:{}", host, port);
+        container.requestReconnect(clientId);
+    }
+
+    @Override
+    public void doRead() {
+        int bytesRead = reader.performRead();
+        if (bytesRead == -1) {
+            logger.info("Server closed connection of client {}", clientId);
+            container.requestReconnect(clientId);
+        }
+    }
+
+    @Override
+    public int doWrite() {
+        return handleWriteResult(writer.performWrite());
+    }
+
+    private int handleWriteResult(int writeBytes) {
+        if (writeBytes == 0) {
+            container.onWriteSuffer(this);
+        }
+        return writeBytes;
+    }
+
+    @Override
+    public void close() {
+        logger.info("Request to stop client");
+        writer.close();
+        reader.close();
+    }
+
+    @Override
     public void onMessage(String message) {
         logger.info("Client {} received message {}", clientId, message);
     }
@@ -54,47 +95,7 @@ public class ClientImpl implements Client {
             container.requestReconnect(clientId, host, port);
             return;
         }
-        container.onConnectinEstablished(clientId);
-    }
-
-    @Override
-    public void onConnect() {
-        logger.info("Client connected to {}:{}", host, port);
-        resolveServer();
-    }
-
-    @Override
-    public void onConnectionFail() {
-        logger.info("Client failed to connect to {}:{}", host, port);
-        container.requestReconnect(clientId);
-    }
-
-    @Override
-    public void onReadReady() {
-        int bytesRead = reader.performRead();
-        if (bytesRead == -1) {
-            logger.info("Server closed connection of client {}", clientId);
-            container.requestReconnect(clientId);
-        }
-    }
-
-    @Override
-    public int onWriteReady() {
-        return handleWriteResult(writer.performWrite());
-    }
-
-    private int handleWriteResult(int writeBytes) {
-        if (writeBytes == 0) {
-            container.onWriteSuffer(this);
-        }
-        return writeBytes;
-    }
-
-    @Override
-    public void close() {
-        logger.info("Request to stop client");
-        writer.close();
-        reader.close();
+        container.onConnectionEstablished(clientId);
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ClientImpl.class);
