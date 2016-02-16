@@ -19,6 +19,8 @@ import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 public class ServerImpl implements Server, ClientServerListener {
 
@@ -70,18 +72,19 @@ public class ServerImpl implements Server, ClientServerListener {
     }
 
     private void processConnections() {
-        while(!Thread.currentThread().isInterrupted()) {
+        while (!Thread.currentThread().isInterrupted()) {
             try {
                 serverSelector.select();
                 Set<SelectionKey> selectedKeys = serverSelector.selectedKeys();
                 Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
-                while(keyIterator.hasNext()) {
+                while (keyIterator.hasNext()) {
                     SelectionKey key = keyIterator.next();
                     if (key.isAcceptable()) {
                         ServerSocketChannel channel = (ServerSocketChannel) key.channel();
                         SocketChannel clientChannel = channel.accept();
                         clientChannel.configureBlocking(false);
                         ClientServer clientServer = new ClientServerImpl(clientChannel, this);
+                        clientSelector.wakeup();
                         clientChannel.register(clientSelector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, clientServer);
                     }
                     keyIterator.remove();
@@ -93,23 +96,26 @@ public class ServerImpl implements Server, ClientServerListener {
     }
 
     private void processIo() {
-        while(!Thread.currentThread().isInterrupted()) {
+        while (!Thread.currentThread().isInterrupted()) {
             try {
-                clientSelector.select();
-                Set<SelectionKey> selectedKeys = clientSelector.selectedKeys();
-                Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
-                while(keyIterator.hasNext()) {
-                    SelectionKey key = keyIterator.next();
-                    ClientServer clientServer = (ClientServer) key.attachment();
-                    if (key.isWritable()) {
-                        clientServer.onWriteReady();
-                    } else if (key.isReadable()) {
-                        clientServer.onReadReady();
-                    }
-                    keyIterator.remove();
+                int selectCount = clientSelector.select();
+                if (selectCount == 0) {
+                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(100));
                 }
             } catch (IOException e) {
                 logger.error("Error while performing select", e);
+            }
+            Set<SelectionKey> selectedKeys = clientSelector.selectedKeys();
+            Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+            while (keyIterator.hasNext()) {
+                SelectionKey key = keyIterator.next();
+                ClientServer clientServer = (ClientServer) key.attachment();
+                if (key.isReadable()) {
+                    clientServer.onReadReady();
+                } else if (key.isWritable()) {
+                    clientServer.onWriteReady();
+                }
+                keyIterator.remove();
             }
         }
     }
@@ -126,6 +132,5 @@ public class ServerImpl implements Server, ClientServerListener {
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ServerImpl.class);
-
 
 }

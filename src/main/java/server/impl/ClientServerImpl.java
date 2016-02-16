@@ -4,9 +4,13 @@ import common.network.Reader;
 import model.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import server.*;
+import server.ClientServer;
+import server.ClientServerListener;
+import server.ServerReaderListener;
+import server.ServerWriter;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class ClientServerImpl implements ClientServer, ServerReaderListener {
@@ -15,12 +19,13 @@ public class ClientServerImpl implements ClientServer, ServerReaderListener {
     private final Reader reader;
     private final ServerWriter writer;
     private final ClientServerListener listener;
+    private final ByteBuffer buffer = ByteBuffer.allocate(1000);
 
     public ClientServerImpl(SocketChannel channel, ClientServerListener listener) {
         logger.info("Create server to client connection");
         this.channel = channel;
-        writer = new ServerWriterImpl(channel);
-        reader = new ServerReaderImpl(channel, this);
+        writer = new ServerWriterImpl(channel, buffer);
+        reader = new ServerReaderImpl(channel, buffer, this);
         this.listener = listener;
     }
 

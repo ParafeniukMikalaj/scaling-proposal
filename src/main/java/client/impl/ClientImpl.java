@@ -7,6 +7,7 @@ import client.ClientWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class ClientImpl implements Client {
@@ -16,12 +17,13 @@ public class ClientImpl implements Client {
     private final ClientContainer container;
     private final String host;
     private final int port;
+    private final ByteBuffer buffer = ByteBuffer.allocate(1000);
 
     public ClientImpl(SocketChannel channel, int clientId, String host, int port, ClientContainer container) {
         logger.info("Starting client to listen to {}:{}", host, port);
         this.clientId = clientId;
-        this.reader = new ClientReaderImpl(channel, this);
-        this.writer = new ClientWriterImpl(channel);
+        this.reader = new ClientReaderImpl(channel, buffer, this);
+        this.writer = new ClientWriterImpl(channel, buffer);
         this.host = host;
         this.port = port;
         this.container = container;
@@ -45,7 +47,7 @@ public class ClientImpl implements Client {
             logger.info("Resolution request retry");
             resolveServer();
         }
-        if (host.equals(this.host) || port != this.port) {
+        if (!host.equals(this.host) || port != this.port) {
             logger.info("Client should be redirected to {}:{} while connected to {}:{}. Request reconnect.",
                     host, port, this.host, this.port);
             reader.close();

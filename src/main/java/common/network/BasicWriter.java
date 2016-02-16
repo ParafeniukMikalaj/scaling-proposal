@@ -10,19 +10,22 @@ import java.nio.channels.SocketChannel;
 
 public class BasicWriter implements Writer {
 
-    private ByteBuffer buffer = ByteBuffer.allocate(100);
-    private SocketChannel channel;
+    private final ByteBuffer buffer;
+    private final SocketChannel channel;
 
-    public BasicWriter(SocketChannel channel) {
+    public BasicWriter(SocketChannel channel, ByteBuffer buffer) {
         this.channel = channel;
+        this.buffer = buffer;
     }
 
     @Override
     public void performWrite() {
         if (buffer != null) {
             try {
-                // TODO wrap to while loop?
-                channel.write(buffer);
+                while(buffer.hasRemaining()) {
+                    channel.write(buffer);
+                }
+                buffer.compact();
             } catch (IOException e) {
                 logger.error("Unexpected error while writing buffer to channel. It should be already connected", e);
             }
@@ -42,8 +45,10 @@ public class BasicWriter implements Writer {
     public void writeMessage(String type, String message) {
         String messageToSend = type + "|" + message;
         byte[] messageBytes = messageToSend.getBytes();
+        buffer.clear();
         buffer.putInt(messageBytes.length);
         buffer.put(messageBytes);
+        buffer.flip();
         performWrite();
     }
 
