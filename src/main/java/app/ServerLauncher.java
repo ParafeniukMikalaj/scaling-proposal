@@ -15,6 +15,15 @@ public class ServerLauncher {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> logger.error("Uncaught error in thread " + t.getName(), e));
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+
+        if (args.length < 3) {
+            System.err.println("Usage <nodeId> <host> <port>");
+            System.err.println("Example:");
+            System.err.println("First  server: 0 localhost 12001");
+            System.err.println("Second server: 1 localhost 12002");
+            System.exit(1);
+        }
+
         Integer nodeId  = Integer.parseInt(args[0]);
         String host = args[1];
         Integer port = Integer.parseInt(args[2]);
