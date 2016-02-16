@@ -2,12 +2,11 @@ package client.impl;
 
 import client.Client;
 import client.ClientContainer;
-import common.network.Reader;
 import client.ClientWriter;
+import common.network.Reader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class ClientImpl implements Client {
@@ -21,10 +20,8 @@ public class ClientImpl implements Client {
     public ClientImpl(SocketChannel channel, int clientId, String host, int port, ClientContainer container) {
         logger.info("Starting client to listen to {}:{}", host, port);
         this.clientId = clientId;
-        ByteBuffer readBuffer = ByteBuffer.allocate(1000);
-        ByteBuffer writeBuffer = ByteBuffer.allocate(1000);
-        this.reader = new ClientReaderImpl(channel, readBuffer, this);
-        this.writer = new ClientWriterImpl(channel, writeBuffer);
+        this.reader = new ClientReaderImpl(channel, this);
+        this.writer = new ClientWriterImpl(channel);
         this.host = host;
         this.port = port;
         this.container = container;

@@ -1,19 +1,18 @@
 package client.impl;
 
-import common.network.AbstractReader;
 import client.ClientReaderListener;
+import common.network.AbstractReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class ClientReaderImpl extends AbstractReader {
 
     private final ClientReaderListener listener;
 
-    public ClientReaderImpl(SocketChannel channel, ByteBuffer buffer, ClientReaderListener listener) {
-        super(channel, buffer);
+    public ClientReaderImpl(SocketChannel channel, ClientReaderListener listener) {
+        super(channel);
         this.listener = listener;
     }
 

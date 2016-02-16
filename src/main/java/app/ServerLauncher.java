@@ -12,7 +12,6 @@ import java.util.concurrent.CountDownLatch;
 public class ServerLauncher {
 
     public static void main(String[] args) throws InterruptedException {
-        Thread.setDefaultUncaughtExceptionHandler((t, e) -> logger.error("Uncaught error in thread " + t.getName(), e));
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
 
@@ -36,6 +35,7 @@ public class ServerLauncher {
         Service service = beanFactory.getBean(ServerApplication.class);
         CountDownLatch latch = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread(latch::countDown));
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> logger.error("Uncaught error in thread " + t.getName(), e));
 
         service.start();
         latch.await();

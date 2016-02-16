@@ -7,27 +7,25 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.locks.Lock;
 
 public class BasicWriter implements Writer {
 
-    private final ByteBuffer buffer;
+    private final ByteBuffer buffer = ByteBuffer.allocate(100);
     private final SocketChannel channel;
-    private int bytesToSend = 0;
 
     private final Object lock = new Object();
 
-    public BasicWriter(SocketChannel channel, ByteBuffer buffer) {
+    public BasicWriter(SocketChannel channel) {
         this.channel = channel;
-        this.buffer = buffer;
+        buffer.clear();
     }
 
     @Override
     public void performWrite() {
         try {
             synchronized (lock) {
-                while (buffer.hasRemaining() && bytesToSend > 0) {
-                    bytesToSend -= channel.write(buffer);
+                while (buffer.hasRemaining()) {
+                    channel.write(buffer);
                 }
                 buffer.compact();
             }
@@ -50,11 +48,9 @@ public class BasicWriter implements Writer {
         String messageToSend = type + "|" + message;
         byte[] messageBytes = messageToSend.getBytes();
         synchronized (lock) {
-            buffer.clear();
             buffer.putInt(messageBytes.length);
             buffer.put(messageBytes);
             buffer.flip();
-            bytesToSend += buffer.remaining();
         }
         performWrite();
     }

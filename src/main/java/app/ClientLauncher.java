@@ -10,12 +10,12 @@ import java.util.concurrent.CountDownLatch;
 
 public class ClientLauncher {
     public static void main(String[] args) throws InterruptedException {
-        Thread.setDefaultUncaughtExceptionHandler((t, e) -> logger.error("Uncaught error in thread " + t.getName(), e));
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext("spring.config.client");
         Service service = context.getBean(ClientApplication.class);
 
         CountDownLatch latch = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread(latch::countDown));
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> logger.error("Uncaught error in thread " + t.getName(), e));
 
         service.start();
         latch.await();

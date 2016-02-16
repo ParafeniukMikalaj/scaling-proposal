@@ -4,35 +4,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public abstract class AbstractReader implements Reader {
 
     private final SocketChannel channel;
-    private final ByteBuffer buffer;
+    private final ByteBuffer buffer = ByteBuffer.allocate(100);
 
-    protected AbstractReader(SocketChannel channel, ByteBuffer buffer) {
+    protected AbstractReader(SocketChannel channel) {
         this.channel = channel;
-        this.buffer = buffer;
+        buffer.clear();
     }
 
     @Override
     public int performRead() {
         int bytesRead = 0;
         try {
-            // TODO maybe while loop should be used
-            buffer.clear();
             bytesRead = channel.read(buffer);
-            buffer.flip();
         } catch (IOException e) {
             logger.error("Unexpected error while writing buffer to channel. It should be already connected", e);
         }
-        if (buffer.remaining() > 4) {
+        if (buffer.position() > 4) {
             buffer.mark();
-            int messageLen = buffer.getInt();
-            if (buffer.remaining() >= messageLen) {
+            int messageLen = buffer.getInt(0);
+            if (buffer.position() >= messageLen + 4) {
+                buffer.flip();
+                buffer.getInt();
                 String message = new String(buffer.array(), buffer.position(), messageLen);
                 buffer.position(buffer.position() + messageLen);
                 buffer.compact();
@@ -40,8 +38,6 @@ public abstract class AbstractReader implements Reader {
                 String type = parts[0];
                 String dataMessage = parts[1];
                 handleMessage(type, dataMessage);
-            } else {
-                buffer.reset();
             }
         }
         return bytesRead;

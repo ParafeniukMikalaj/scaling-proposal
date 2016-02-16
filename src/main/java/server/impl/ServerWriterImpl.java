@@ -5,14 +5,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ServerWriter;
 
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class ServerWriterImpl implements ServerWriter {
     private BasicWriter writer;
 
-    public ServerWriterImpl(SocketChannel channel, ByteBuffer buffer) {
-        writer = new BasicWriter(channel, buffer);
+    public ServerWriterImpl(SocketChannel channel) {
+        writer = new BasicWriter(channel);
     }
 
     @Override

@@ -5,15 +5,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ServerReaderListener;
 
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class ServerReaderImpl extends AbstractReader {
 
     private final ServerReaderListener listener;
 
-    public ServerReaderImpl(SocketChannel channel, ByteBuffer buffer, ServerReaderListener listener) {
-        super(channel, buffer);
+    public ServerReaderImpl(SocketChannel channel, ServerReaderListener listener) {
+        super(channel);
         this.listener = listener;
     }
 
