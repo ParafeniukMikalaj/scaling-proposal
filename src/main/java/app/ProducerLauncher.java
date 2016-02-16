@@ -11,7 +11,7 @@ import java.util.concurrent.CountDownLatch;
 public class ProducerLauncher {
     public static void main(String[] args) throws InterruptedException {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> logger.error("Uncaught error in thread " + t.getName(), e));
-        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext("spring.config.service");
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext("spring.config.producer");
         Service service = context.getBean(PeriodicTestKafkaProducer.class);
 
         CountDownLatch latch = new CountDownLatch(1);

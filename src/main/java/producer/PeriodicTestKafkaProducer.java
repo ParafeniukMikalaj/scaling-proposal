@@ -14,13 +14,15 @@ public class PeriodicTestKafkaProducer implements Service {
 
     private final int delay;
     private int counter;
+    private final int accountsCount;
 
     @Autowired
     private TestKafkaProducer producer;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    public PeriodicTestKafkaProducer(int delay) {
+    public PeriodicTestKafkaProducer(int delay, int accountsCount) {
+        this.accountsCount = accountsCount;
         this.delay = delay;
     }
 
@@ -36,8 +38,9 @@ public class PeriodicTestKafkaProducer implements Service {
 
     private void producePeriodically() {
         while (!Thread.currentThread().isInterrupted()) {
-            logger.info("Sending message to producer");
-            producer.produce(++counter);
+            int value = ++counter;
+            int account = value % accountsCount;
+            producer.produce(account, value);
             try {
                 Thread.sleep(delay);
             } catch (InterruptedException e) {

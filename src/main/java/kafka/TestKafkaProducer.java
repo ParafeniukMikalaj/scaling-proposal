@@ -1,5 +1,5 @@
 package kafka;
 
 public interface TestKafkaProducer {
-    void produce(int value);
+    void produce(int accountId, int value);
 }

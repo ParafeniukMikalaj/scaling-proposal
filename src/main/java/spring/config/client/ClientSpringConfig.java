@@ -20,7 +20,7 @@ public class ClientSpringConfig {
 
     @Bean
     public ClientApplication periodicTestKafkaProducer(Config config) {
-        int clientsCount = config.getInt("client.accounts.count");
+        int clientsCount = config.getInt("accounts.count");
         int spawnDelay = config.getInt("client.spawn.delay");
         int decommissionDelay = config.getInt("client.decommission.delay");
 
